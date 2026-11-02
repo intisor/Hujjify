@@ -72,6 +72,11 @@ object DashboardStatsManager {
             else -> "CLEAN"
         }
 
+        // StreakKit drop-in: ping on clean audio playback
+        if (!isFlagged && !isSkipped) {
+            com.streakkit.StreakKit.ping(context, "alify_playback")
+        }
+
         // 3. Add to recent tracks FIFO list
         val recentList = getRecentTracks(context).toMutableList()
         // Deduplicate recent entries within 15 seconds for the same track

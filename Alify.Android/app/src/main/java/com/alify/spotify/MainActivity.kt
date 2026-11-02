@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestNotificationPermission()
+        com.streakkit.StreakKit.init(this)
         setupUI()
         handleRedirectIntent(intent)
         startUiPolling()
@@ -77,6 +78,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
+        // StreakKit Drop-In Modal
+        binding.cardStreak.setOnClickListener {
+            com.streakkit.StreakKit.showModal(this, "alify_playback")
+        }
+
         // Settings Navigation
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -264,6 +270,27 @@ class MainActivity : AppCompatActivity() {
         binding.tvStatClean.text = stats.totalClean.toString()
         binding.tvStatFlagged.text = stats.totalFlagged.toString()
         binding.tvStatNoLyrics.text = stats.totalNoLyrics.toString()
+
+        // Update StreakKit Drop-In Indicators
+        val streak = com.streakkit.StreakKit.getState(this)
+        if (streak != null) {
+            val count = streak.optInt("currentStreak", 0)
+            binding.tvStreakCount.text = "$count Day Streak"
+            val prog = streak.optJSONObject("todayProgress")
+            val cur = prog?.optInt("current", 0) ?: 0
+            val target = prog?.optInt("target", 3) ?: 3
+            binding.streakProgressBar.max = target
+            binding.streakProgressBar.progress = cur
+            if (prog?.optBoolean("completed", false) == true) {
+                binding.tvStreakStatusBadge.text = "Active Today"
+                binding.tvStreakStatusBadge.setTextColor(0xFF22C55E.toInt())
+                binding.tvStreakProgressSubtitle.text = "✓ Goal Completed ($cur/$target songs)"
+            } else {
+                binding.tvStreakStatusBadge.text = "Pending ($cur/$target)"
+                binding.tvStreakStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
+                binding.tvStreakProgressSubtitle.text = "$cur / $target Clean songs observed today"
+            }
+        }
 
         val recentTracks = DashboardStatsManager.getRecentTracks(this)
         if (recentTracks.isEmpty()) {
