@@ -283,7 +283,7 @@ class LyricsActivity : AppCompatActivity() {
                 // Flagged Offending Verse Container
                 val flaggedContainer = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
-                    setBackgroundResource(R.drawable.flagged_line_background)
+                    setBackgroundResource(R.drawable.bg_flagged_line)
                     setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8))
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
