@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity() {
 
         requestNotificationPermission()
         com.streakkit.StreakKit.init(this)
+        com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
+        com.streakkit.StreakKit.ping(this, "alify_playback")
         setupUI()
         handleRedirectIntent(intent)
         startUiPolling()
