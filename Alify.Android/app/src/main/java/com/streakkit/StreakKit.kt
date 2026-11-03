@@ -165,7 +165,9 @@ object StreakKit {
                 setBackgroundColor(Color.parseColor("#0f172a"))
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.databaseEnabled = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
+                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
                 addJavascriptInterface(object {
                     @JavascriptInterface
@@ -185,7 +187,62 @@ object StreakKit {
                     }
                 }, "StreakBridge")
 
-                webViewClient = WebViewClient()
+                webViewClient = object : WebViewClient() {
+                    override fun onReceivedError(
+                        view: WebView?,
+                        errorCode: Int,
+                        description: String?,
+                        failingUrl: String?
+                    ) {
+                        val html = """
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <style>
+                                    body {
+                                        background-color: #0f172a;
+                                        color: #f8fafc;
+                                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                        display: flex;
+                                        flex-direction: column;
+                                        align-items: center;
+                                        justify-content: center;
+                                        min-height: 80vh;
+                                        margin: 0;
+                                        padding: 24px;
+                                        text-align: center;
+                                        box-sizing: border-box;
+                                    }
+                                    .icon { font-size: 48px; margin-bottom: 16px; }
+                                    h2 { font-size: 20px; font-weight: 700; margin: 0 0 8px 0; color: #fbbf24; }
+                                    p { font-size: 14px; color: #94a3b8; margin: 0 0 20px 0; line-height: 1.5; }
+                                    .url { font-family: monospace; font-size: 12px; background: #1e293b; padding: 6px 10px; border-radius: 6px; word-break: break-all; margin-bottom: 24px; color: #38bdf8; }
+                                    .btn {
+                                        background: linear-gradient(135deg, #f59e0b, #d97706);
+                                        color: white;
+                                        border: none;
+                                        border-radius: 9999px;
+                                        padding: 12px 28px;
+                                        font-weight: 600;
+                                        font-size: 14px;
+                                        cursor: pointer;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="icon">⚡</div>
+                                <h2>Connecting to StreakKit...</h2>
+                                <p>Unable to connect to the backend server. Make sure the StreakKit backend is running.</p>
+                                <div class="url">$failingUrl</div>
+                                <button class="btn" onclick="location.reload()">Retry Connection</button>
+                            </body>
+                            </html>
+                        """.trimIndent()
+                        view?.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+                    }
+                }
+
                 loadUrl("${endpoint.trimEnd('/')}/v1/embed/${Uri.encode(ruleSlug)}/${Uri.encode(userId)}")
             }
 
