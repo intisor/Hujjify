@@ -4,27 +4,19 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
-import java.util.TimeZone
-import java.util.concurrent.TimeUnit
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
  * Developer Rule Definition passed as JSON or typed object into the SDK
@@ -39,50 +31,40 @@ data class StreakRule(
 )
 
 /**
- * StreakKit Android SDK — Universal Single-File Drop-In (< 140 lines)
- * - Developers define rules directly in JSON / code passed to init()
- * - Auto-provisions and syncs rules with backend seamlessly
- * - 1-line async ping with offline auto-queue
- * - 1-line Duolingo-grade animated embed UI in a native BottomSheetDialog
+ * StreakKit Android SDK — 100% Self-Contained Standalone Drop-In
+ * - Works completely offline on-device with zero backend or console required.
+ * - Local habit calculation engine (streaks, daily targets, freeze shields).
+ * - Instant animated Duolingo-grade embed UI rendered in a native BottomSheetDialog.
  */
 object StreakKit {
     private const val PREFS = "streakkit_prefs"
-    private const val KEY_ENDPOINT = "endpoint"
-    private const val KEY_PUBLIC_KEY = "public_key"
-    private const val KEY_STATE = "cached_state"
-    private const val KEY_QUEUE = "offline_queue"
-
-    var endpoint: String = "http://10.0.2.2:3000"
-    var publicKey: String = "pk_live_hujjify_456"
+    private const val KEY_CURRENT_STREAK = "current_streak"
+    private const val KEY_BEST_STREAK = "best_streak"
+    private const val KEY_LAST_ACTIVE_DATE = "last_active_date"
+    private const val KEY_TODAY_DATE = "today_date"
+    private const val KEY_TODAY_COUNT = "today_count"
+    private const val KEY_FREEZES_AVAILABLE = "freezes_available"
+    private const val KEY_HISTORY = "history_days"
 
     private val configuredRules = mutableMapOf<String, StreakRule>()
-
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .build()
-
     private val mainHandler = Handler(Looper.getMainLooper())
     private val listeners = mutableListOf<(JSONObject) -> Unit>()
 
+    private val dateFormat: SimpleDateFormat
+        get() = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
     /**
-     * Initialize SDK with API keys and declared developer rules (via list or JSON string).
+     * Initialize SDK with local rules.
      */
     fun init(
         context: Context,
-        defaultEndpoint: String = endpoint,
-        defaultKey: String = publicKey,
+        defaultEndpoint: String = "",
+        defaultKey: String = "",
         rules: List<StreakRule> = emptyList(),
         rulesJson: String? = null
     ) {
-        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        endpoint = sp.getString(KEY_ENDPOINT, defaultEndpoint) ?: defaultEndpoint
-        publicKey = sp.getString(KEY_PUBLIC_KEY, defaultKey) ?: defaultKey
-
-        // Register typed rules
         rules.forEach { configuredRules[it.slug] = it }
 
-        // Register JSON rules string if provided
         if (!rulesJson.isNullOrBlank()) {
             try {
                 val arr = JSONArray(rulesJson)
@@ -103,36 +85,9 @@ object StreakKit {
             }
         }
 
-        syncRulesWithBackend()
-        flushQueue(context)
-    }
-
-    private fun syncRulesWithBackend() {
-        if (configuredRules.isEmpty()) return
-        val rulesArr = JSONArray()
-        configuredRules.values.forEach { r ->
-            rulesArr.put(JSONObject().apply {
-                put("slug", r.slug)
-                put("name", r.name)
-                put("target", r.target)
-                put("cadence", r.cadence)
-                put("gracePeriodMinutes", r.gracePeriodMinutes)
-                put("maxFreezes", r.maxFreezes)
-            })
-        }
-
-        val body = JSONObject().put("rules", rulesArr)
-        val req = Request.Builder()
-            .url("${endpoint.trimEnd('/')}/v1/rules/sync")
-            .header("Authorization", "Bearer $publicKey")
-            .header("Content-Type", "application/json")
-            .post(body.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-
-        httpClient.newCall(req).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {}
-            override fun onResponse(call: Call, response: Response) { response.close() }
-        })
+        // Run local day rollover check
+        val defaultRule = rules.firstOrNull()?.slug ?: "hujjify_playback"
+        ping(context, defaultRule, value = 0)
     }
 
     fun onStateChange(listener: (JSONObject) -> Unit) {
@@ -140,123 +95,422 @@ object StreakKit {
     }
 
     /**
-     * Records a streak action. Automatically falls back to local queue if offline.
+     * Records an action toward the streak.
+     * Evaluates day rollovers, freeze shields, and daily targets locally on-device.
      */
+    @Synchronized
     fun ping(
         context: Context,
-        ruleSlug: String,
+        ruleSlug: String = "hujjify_playback",
         userId: String = "user_default",
         value: Int = 1,
         onSuccess: ((JSONObject) -> Unit)? = null
     ) {
-        val rule = configuredRules[ruleSlug]
-        val payload = JSONObject().apply {
-            put("ruleSlug", ruleSlug)
-            put("externalUserId", userId)
-            put("value", value)
-            put("timezone", TimeZone.getDefault().id)
-            if (rule != null) {
-                put("ruleConfig", JSONObject().apply {
-                    put("name", rule.name)
-                    put("target", rule.target)
-                    put("cadence", rule.cadence)
-                    put("gracePeriodMinutes", rule.gracePeriodMinutes)
-                    put("maxFreezes", rule.maxFreezes)
-                })
-            }
-        }
+        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val rule = configuredRules[ruleSlug] ?: StreakRule(ruleSlug, target = 1)
+        val todayStr = dateFormat.format(Date())
 
-        val req = Request.Builder()
-            .url("${endpoint.trimEnd('/')}/v1/ping")
-            .header("Authorization", "Bearer $publicKey")
-            .header("Content-Type", "application/json")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .build()
+        var currentStreak = sp.getInt(KEY_CURRENT_STREAK, 0)
+        var bestStreak = sp.getInt(KEY_BEST_STREAK, 0)
+        var lastActiveDate = sp.getString(KEY_LAST_ACTIVE_DATE, "") ?: ""
+        var todayDate = sp.getString(KEY_TODAY_DATE, "") ?: ""
+        var todayCount = sp.getInt(KEY_TODAY_COUNT, 0)
+        var freezes = sp.getInt(KEY_FREEZES_AVAILABLE, rule.maxFreezes)
+        val historySet = sp.getStringSet(KEY_HISTORY, emptySet())?.toMutableSet() ?: mutableSetOf()
 
-        httpClient.newCall(req).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                enqueueOffline(context, payload)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                if (response.isSuccessful) {
-                    val body = response.body?.string() ?: return
-                    val json = try { JSONObject(body) } catch (_: Exception) { return }
-                    saveState(context, json)
-                    mainHandler.post {
-                        listeners.forEach { it(json) }
-                        onSuccess?.invoke(json)
+        // 1. Day Rollover Detection
+        if (todayDate != todayStr) {
+            if (lastActiveDate.isNotBlank()) {
+                try {
+                    val lastDate = dateFormat.parse(lastActiveDate)
+                    val todayDateObj = dateFormat.parse(todayStr)
+                    if (lastDate != null && todayDateObj != null) {
+                        val diffDays = ((todayDateObj.time - lastDate.time) / (1000 * 60 * 60 * 24)).toInt()
+                        if (diffDays == 1) {
+                            // Consecutive day, streak continues intact!
+                        } else if (diffDays == 2) {
+                            // Missed exactly 1 day: Consume freeze shield if available
+                            if (freezes > 0) {
+                                freezes--
+                            } else {
+                                currentStreak = 0
+                            }
+                        } else if (diffDays > 2) {
+                            // Missed 2+ days: Streak resets
+                            currentStreak = 0
+                        }
                     }
-                    flushQueue(context)
-                } else {
-                    enqueueOffline(context, payload)
+                } catch (_: Exception) {
+                    currentStreak = 0
                 }
             }
-        })
-    }
-
-    fun getState(context: Context): JSONObject? {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STATE, null) ?: return null
-        return try { JSONObject(raw) } catch (_: Exception) { null }
-    }
-
-    private fun saveState(context: Context, json: JSONObject) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_STATE, json.toString()).apply()
-    }
-
-    private fun enqueueOffline(context: Context, payload: JSONObject) {
-        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val arr = JSONArray(sp.getString(KEY_QUEUE, "[]") ?: "[]")
-        arr.put(payload)
-        sp.edit().putString(KEY_QUEUE, arr.toString()).apply()
-    }
-
-    private fun flushQueue(context: Context) {
-        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val arr = JSONArray(sp.getString(KEY_QUEUE, "[]") ?: "[]")
-        if (arr.length() == 0) return
-
-        val remaining = JSONArray()
-        for (i in 0 until arr.length()) {
-            val item = arr.getJSONObject(i)
-            val req = Request.Builder()
-                .url("${endpoint.trimEnd('/')}/v1/ping")
-                .header("Authorization", "Bearer $publicKey")
-                .header("Content-Type", "application/json")
-                .post(item.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-
-            httpClient.newCall(req).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    remaining.put(item)
-                }
-                override fun onResponse(call: Call, response: Response) {
-                    if (!response.isSuccessful) remaining.put(item)
-                }
-            })
+            todayDate = todayStr
+            todayCount = 0
         }
-        sp.edit().putString(KEY_QUEUE, remaining.toString()).apply()
+
+        // 2. Increment Progress
+        todayCount += value
+        val completed = todayCount >= rule.target
+
+        // 3. Complete Streak Day
+        if (completed && lastActiveDate != todayStr) {
+            currentStreak += 1
+            if (currentStreak > bestStreak) {
+                bestStreak = currentStreak
+            }
+            lastActiveDate = todayStr
+            historySet.add(todayStr)
+        }
+
+        // 4. Save state
+        sp.edit()
+            .putInt(KEY_CURRENT_STREAK, currentStreak)
+            .putInt(KEY_BEST_STREAK, bestStreak)
+            .putString(KEY_LAST_ACTIVE_DATE, lastActiveDate)
+            .putString(KEY_TODAY_DATE, todayDate)
+            .putInt(KEY_TODAY_COUNT, todayCount)
+            .putInt(KEY_FREEZES_AVAILABLE, freezes)
+            .putStringSet(KEY_HISTORY, historySet)
+            .apply()
+
+        val json = buildStateJson(ruleSlug, currentStreak, bestStreak, lastActiveDate, freezes, todayCount, rule.target, completed, historySet)
+
+        mainHandler.post {
+            listeners.forEach { it(json) }
+            onSuccess?.invoke(json)
+        }
     }
 
     /**
-     * Opens the animated, Duolingo-grade modal inside a native Android BottomSheetDialog.
+     * Reads current cached streak state as JSON.
      */
-    fun showModal(activity: Activity, ruleSlug: String, userId: String = "user_default") {
+    fun getState(context: Context): JSONObject? {
+        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val ruleSlug = configuredRules.keys.firstOrNull() ?: "hujjify_playback"
+        val rule = configuredRules[ruleSlug] ?: StreakRule(ruleSlug, target = 1)
+        val todayStr = dateFormat.format(Date())
+
+        val currentStreak = sp.getInt(KEY_CURRENT_STREAK, 0)
+        val bestStreak = sp.getInt(KEY_BEST_STREAK, 0)
+        val lastActiveDate = sp.getString(KEY_LAST_ACTIVE_DATE, "") ?: ""
+        val todayDate = sp.getString(KEY_TODAY_DATE, "") ?: ""
+        val todayCount = if (todayDate == todayStr) sp.getInt(KEY_TODAY_COUNT, 0) else 0
+        val freezes = sp.getInt(KEY_FREEZES_AVAILABLE, rule.maxFreezes)
+        val historySet = sp.getStringSet(KEY_HISTORY, emptySet()) ?: emptySet()
+        val completed = todayCount >= rule.target
+
+        return buildStateJson(ruleSlug, currentStreak, bestStreak, lastActiveDate, freezes, todayCount, rule.target, completed, historySet)
+    }
+
+    private fun buildStateJson(
+        ruleSlug: String,
+        currentStreak: Int,
+        bestStreak: Int,
+        lastActiveDate: String,
+        freezes: Int,
+        todayCount: Int,
+        target: Int,
+        completed: Boolean,
+        historySet: Set<String>
+    ): JSONObject {
+        return JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("currentStreak", currentStreak)
+            put("bestStreak", bestStreak)
+            put("lastActiveDate", lastActiveDate)
+            put("freezesAvailable", freezes)
+            put("todayProgress", JSONObject().apply {
+                put("current", todayCount)
+                put("target", target)
+                put("completed", completed)
+            })
+            put("history", JSONArray(historySet.toList()))
+        }
+    }
+
+    /**
+     * Opens the animated, self-contained Duolingo-grade modal inside a native BottomSheetDialog.
+     * Renders 100% locally with zero network connection or backend server required.
+     */
+    fun showModal(activity: Activity, ruleSlug: String = "hujjify_playback", userId: String = "user_default") {
         activity.runOnUiThread {
+            val state = getState(activity) ?: JSONObject()
+            val currentStreak = state.optInt("currentStreak", 0)
+            val prog = state.optJSONObject("todayProgress")
+            val cur = prog?.optInt("current", 0) ?: 0
+            val target = prog?.optInt("target", 1) ?: 1
+            val completed = prog?.optBoolean("completed", false) ?: false
+            val freezes = state.optInt("freezesAvailable", 2)
+            val history = state.optJSONArray("history") ?: JSONArray()
+            val historyDates = mutableSetOf<String>()
+            for (i in 0 until history.length()) {
+                historyDates.add(history.getString(i))
+            }
+
+            // Generate Week Days (Monday to Sunday of the current week)
+            val cal = Calendar.getInstance()
+            cal.firstDayOfWeek = Calendar.MONDAY
+            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            val weekDayHtml = StringBuilder()
+            val dayNames = listOf("M", "T", "W", "T", "F", "S", "S")
+            val todayStr = dateFormat.format(Date())
+
+            for (i in 0 until 7) {
+                val dStr = dateFormat.format(cal.time)
+                val isToday = dStr == todayStr
+                val isDone = historyDates.contains(dStr)
+
+                val bubbleClass = when {
+                    isDone -> "day-bubble active"
+                    isToday && !completed -> "day-bubble today-pending"
+                    else -> "day-bubble"
+                }
+
+                val bubbleContent = when {
+                    isDone -> "✓"
+                    isToday -> "🔥"
+                    else -> "·"
+                }
+
+                weekDayHtml.append("""
+                    <div class="day-col">
+                        <span class="day-label">${dayNames[i]}</span>
+                        <div class="$bubbleClass">$bubbleContent</div>
+                    </div>
+                """.trimIndent())
+                cal.add(Calendar.DAY_OF_WEEK, 1)
+            }
+
+            val subtitleText = if (completed) {
+                "<span style='color: #22c55e; font-weight: 600;'>✓ Goal completed today!</span> You're building a strong conscious audio habit."
+            } else {
+                "Listen to ${maxOf(1, target - cur)} more clean song(s) today to build your flame!"
+            }
+
+            val html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                            background-color: #0f172a;
+                            color: #f8fafc;
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            padding: 20px 20px 28px 20px;
+                            min-height: 100vh;
+                            overflow-x: hidden;
+                        }
+                        .header-bar {
+                            width: 100%;
+                            display: flex;
+                            justify-content: flex-end;
+                            margin-bottom: 4px;
+                        }
+                        .close-btn {
+                            background: rgba(255, 255, 255, 0.1);
+                            border: none;
+                            color: #94a3b8;
+                            font-size: 18px;
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .flame-container {
+                            position: relative;
+                            margin: 8px 0 16px 0;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .flame-glow {
+                            position: absolute;
+                            width: 110px;
+                            height: 110px;
+                            border-radius: 50%;
+                            background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(217, 119, 6, 0) 70%);
+                            animation: pulse 2s infinite ease-in-out;
+                        }
+                        .flame-icon {
+                            font-size: 64px;
+                            position: relative;
+                            z-index: 2;
+                            filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.65));
+                            animation: bounce 2s infinite ease-in-out;
+                        }
+                        @keyframes pulse {
+                            0%, 100% { transform: scale(1); opacity: 0.6; }
+                            50% { transform: scale(1.25); opacity: 0.95; }
+                        }
+                        @keyframes bounce {
+                            0%, 100% { transform: translateY(0); }
+                            50% { transform: translateY(-6px); }
+                        }
+                        .streak-title {
+                            font-size: 26px;
+                            font-weight: 800;
+                            color: #f59e0b;
+                            text-align: center;
+                            margin-bottom: 6px;
+                            letter-spacing: -0.5px;
+                        }
+                        .streak-subtitle {
+                            font-size: 13px;
+                            color: #94a3b8;
+                            text-align: center;
+                            margin-bottom: 22px;
+                            max-width: 290px;
+                            line-height: 1.4;
+                        }
+                        .week-container {
+                            width: 100%;
+                            background: #1e293b;
+                            border: 1px solid rgba(255, 255, 255, 0.08);
+                            border-radius: 16px;
+                            padding: 16px 12px;
+                            margin-bottom: 18px;
+                        }
+                        .week-days {
+                            display: flex;
+                            justify-content: space-around;
+                            align-items: center;
+                        }
+                        .day-col {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 6px;
+                        }
+                        .day-label {
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: #64748b;
+                            text-transform: uppercase;
+                        }
+                        .day-bubble {
+                            width: 34px;
+                            height: 34px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 13px;
+                            font-weight: bold;
+                            background: #0f172a;
+                            border: 1px solid #334155;
+                            color: #475569;
+                        }
+                        .day-bubble.active {
+                            background: #f59e0b;
+                            border-color: #fbbf24;
+                            color: #0f172a;
+                            box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+                        }
+                        .day-bubble.today-pending {
+                            border: 2px dashed #f59e0b;
+                            color: #f59e0b;
+                        }
+                        .stats-grid {
+                            width: 100%;
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 12px;
+                            margin-bottom: 22px;
+                        }
+                        .stat-card {
+                            background: #1e293b;
+                            border: 1px solid rgba(255, 255, 255, 0.06);
+                            border-radius: 14px;
+                            padding: 14px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 4px;
+                        }
+                        .stat-card-title {
+                            font-size: 11px;
+                            color: #94a3b8;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .stat-card-val {
+                            font-size: 16px;
+                            font-weight: 700;
+                            color: #f8fafc;
+                        }
+                        .btn-share {
+                            width: 100%;
+                            background: linear-gradient(135deg, #f59e0b, #d97706);
+                            color: #ffffff;
+                            border: none;
+                            border-radius: 28px;
+                            padding: 14px;
+                            font-size: 15px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            margin-bottom: 10px;
+                            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+                        }
+                        .btn-close {
+                            background: transparent;
+                            color: #94a3b8;
+                            border: none;
+                            font-size: 14px;
+                            font-weight: 600;
+                            padding: 8px;
+                            cursor: pointer;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header-bar">
+                        <button class="close-btn" onclick="StreakBridge.close()">✕</button>
+                    </div>
+                    <div class="flame-container">
+                        <div class="flame-glow"></div>
+                        <div class="flame-icon">🔥</div>
+                    </div>
+                    <div class="streak-title">$currentStreak Day Streak!</div>
+                    <div class="streak-subtitle">$subtitleText</div>
+                    <div class="week-container">
+                        <div class="week-days">
+                            $weekDayHtml
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-title">Today's Progress</div>
+                            <div class="stat-card-val" style="color: #22c55e;">$cur / $target Clean Track</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-title">Streak Shield</div>
+                            <div class="stat-card-val" style="color: #38bdf8;">🛡️ $freezes/2 Freezes</div>
+                        </div>
+                    </div>
+                    <button class="btn-share" onclick="StreakBridge.share('🔥 I\'m on a $currentStreak day conscious listening streak on Hujjify! Listen clean with me: https://github.com/intisor/Alify')">Share Streak Milestone</button>
+                    <button class="btn-close" onclick="StreakBridge.close()">Continue Listening</button>
+                </body>
+                </html>
+            """.trimIndent()
+
             val dialog = BottomSheetDialog(activity)
             val webView = WebView(activity).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    (activity.resources.displayMetrics.heightPixels * 0.85).toInt()
+                    (activity.resources.displayMetrics.heightPixels * 0.78).toInt()
                 )
                 setBackgroundColor(Color.parseColor("#0f172a"))
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                settings.databaseEnabled = true
-                settings.cacheMode = WebSettings.LOAD_DEFAULT
-                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
                 addJavascriptInterface(object {
                     @JavascriptInterface
@@ -276,63 +530,7 @@ object StreakKit {
                     }
                 }, "StreakBridge")
 
-                webViewClient = object : WebViewClient() {
-                    override fun onReceivedError(
-                        view: WebView?,
-                        errorCode: Int,
-                        description: String?,
-                        failingUrl: String?
-                    ) {
-                        val html = """
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                <style>
-                                    body {
-                                        background-color: #0f172a;
-                                        color: #f8fafc;
-                                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                        display: flex;
-                                        flex-direction: column;
-                                        align-items: center;
-                                        justify-content: center;
-                                        min-height: 80vh;
-                                        margin: 0;
-                                        padding: 24px;
-                                        text-align: center;
-                                        box-sizing: border-box;
-                                    }
-                                    .icon { font-size: 48px; margin-bottom: 16px; }
-                                    h2 { font-size: 20px; font-weight: 700; margin: 0 0 8px 0; color: #fbbf24; }
-                                    p { font-size: 14px; color: #94a3b8; margin: 0 0 20px 0; line-height: 1.5; }
-                                    .url { font-family: monospace; font-size: 12px; background: #1e293b; padding: 6px 10px; border-radius: 6px; word-break: break-all; margin-bottom: 24px; color: #38bdf8; }
-                                    .btn {
-                                        background: linear-gradient(135deg, #f59e0b, #d97706);
-                                        color: white;
-                                        border: none;
-                                        border-radius: 9999px;
-                                        padding: 12px 28px;
-                                        font-weight: 600;
-                                        font-size: 14px;
-                                        cursor: pointer;
-                                    }
-                                </style>
-                            </head>
-                            <body>
-                                <div class="icon">⚡</div>
-                                <h2>Connecting to StreakKit...</h2>
-                                <p>Unable to connect to the backend server. Make sure the StreakKit backend is running.</p>
-                                <div class="url">$failingUrl</div>
-                                <button class="btn" onclick="location.reload()">Retry Connection</button>
-                            </body>
-                            </html>
-                        """.trimIndent()
-                        view?.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
-                    }
-                }
-
-                loadUrl("${endpoint.trimEnd('/')}/v1/embed/${Uri.encode(ruleSlug)}/${Uri.encode(userId)}")
+                loadDataWithBaseURL("https://streakkit.local", html, "text/html", "utf-8", null)
             }
 
             dialog.setContentView(webView)

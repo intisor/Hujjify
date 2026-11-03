@@ -72,8 +72,10 @@ object DashboardStatsManager {
             else -> "CLEAN"
         }
 
-        // StreakKit drop-in: ping on any track activity (clean or skipped listening session)
-        com.streakkit.StreakKit.ping(context, "hujjify_playback")
+        // StreakKit drop-in: ping when clean conscious track is listened
+        if (!isFlagged && !isSkipped) {
+            com.streakkit.StreakKit.ping(context, "hujjify_playback", value = 1)
+        }
 
         // 3. Add to recent tracks FIFO list
         val recentList = getRecentTracks(context).toMutableList()

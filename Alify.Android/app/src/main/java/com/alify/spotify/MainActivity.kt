@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             )
         )
         com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
-        com.streakkit.StreakKit.ping(this, "hujjify_playback")
+        com.streakkit.StreakKit.ping(this, "hujjify_playback", value = 0)
         setupUI()
         handleRedirectIntent(intent)
         startUiPolling()
@@ -302,6 +302,8 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStreakStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
                 binding.tvStreakProgressSubtitle.text = "$cur / $target Clean songs observed today"
             }
+            val freezes = streak.optInt("freezesAvailable", 2)
+            binding.tvStreakFreezes.text = "🛡️ $freezes/2"
         }
 
         val recentTracks = DashboardStatsManager.getRecentTracks(this)
