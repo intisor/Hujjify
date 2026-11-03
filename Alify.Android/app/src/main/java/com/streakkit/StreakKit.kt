@@ -27,7 +27,21 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * StreakKit Android SDK — Universal Single-File Drop-In (< 120 lines)
+ * Developer Rule Definition passed as JSON or typed object into the SDK
+ */
+data class StreakRule(
+    val slug: String,
+    val name: String = slug,
+    val target: Int = 1,
+    val cadence: String = "DAILY",
+    val gracePeriodMinutes: Int = 120,
+    val maxFreezes: Int = 2
+)
+
+/**
+ * StreakKit Android SDK — Universal Single-File Drop-In (< 140 lines)
+ * - Developers define rules directly in JSON / code passed to init()
+ * - Auto-provisions and syncs rules with backend seamlessly
  * - 1-line async ping with offline auto-queue
  * - 1-line Duolingo-grade animated embed UI in a native BottomSheetDialog
  */
@@ -41,6 +55,8 @@ object StreakKit {
     var endpoint: String = "http://10.0.2.2:3000"
     var publicKey: String = "pk_live_alify_456"
 
+    private val configuredRules = mutableMapOf<String, StreakRule>()
+
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
@@ -49,11 +65,74 @@ object StreakKit {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val listeners = mutableListOf<(JSONObject) -> Unit>()
 
-    fun init(context: Context, defaultEndpoint: String = endpoint, defaultKey: String = publicKey) {
+    /**
+     * Initialize SDK with API keys and declared developer rules (via list or JSON string).
+     */
+    fun init(
+        context: Context,
+        defaultEndpoint: String = endpoint,
+        defaultKey: String = publicKey,
+        rules: List<StreakRule> = emptyList(),
+        rulesJson: String? = null
+    ) {
         val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         endpoint = sp.getString(KEY_ENDPOINT, defaultEndpoint) ?: defaultEndpoint
         publicKey = sp.getString(KEY_PUBLIC_KEY, defaultKey) ?: defaultKey
+
+        // Register typed rules
+        rules.forEach { configuredRules[it.slug] = it }
+
+        // Register JSON rules string if provided
+        if (!rulesJson.isNullOrBlank()) {
+            try {
+                val arr = JSONArray(rulesJson)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    val slug = obj.getString("slug")
+                    configuredRules[slug] = StreakRule(
+                        slug = slug,
+                        name = obj.optString("name", slug),
+                        target = obj.optInt("target", obj.optInt("targetValue", 1)),
+                        cadence = obj.optString("cadence", obj.optString("cadenceType", "DAILY")),
+                        gracePeriodMinutes = obj.optInt("gracePeriodMinutes", 120),
+                        maxFreezes = obj.optInt("maxFreezes", 2)
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        syncRulesWithBackend()
         flushQueue(context)
+    }
+
+    private fun syncRulesWithBackend() {
+        if (configuredRules.isEmpty()) return
+        val rulesArr = JSONArray()
+        configuredRules.values.forEach { r ->
+            rulesArr.put(JSONObject().apply {
+                put("slug", r.slug)
+                put("name", r.name)
+                put("target", r.target)
+                put("cadence", r.cadence)
+                put("gracePeriodMinutes", r.gracePeriodMinutes)
+                put("maxFreezes", r.maxFreezes)
+            })
+        }
+
+        val body = JSONObject().put("rules", rulesArr)
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/rules/sync")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) { response.close() }
+        })
     }
 
     fun onStateChange(listener: (JSONObject) -> Unit) {
@@ -70,11 +149,21 @@ object StreakKit {
         value: Int = 1,
         onSuccess: ((JSONObject) -> Unit)? = null
     ) {
+        val rule = configuredRules[ruleSlug]
         val payload = JSONObject().apply {
             put("ruleSlug", ruleSlug)
             put("externalUserId", userId)
             put("value", value)
             put("timezone", TimeZone.getDefault().id)
+            if (rule != null) {
+                put("ruleConfig", JSONObject().apply {
+                    put("name", rule.name)
+                    put("target", rule.target)
+                    put("cadence", rule.cadence)
+                    put("gracePeriodMinutes", rule.gracePeriodMinutes)
+                    put("maxFreezes", rule.maxFreezes)
+                })
+            }
         }
 
         val req = Request.Builder()

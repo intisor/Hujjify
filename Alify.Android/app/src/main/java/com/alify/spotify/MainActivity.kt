@@ -45,7 +45,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestNotificationPermission()
-        com.streakkit.StreakKit.init(this)
+        com.streakkit.StreakKit.init(
+            context = this,
+            rules = listOf(
+                com.streakkit.StreakRule(
+                    slug = "alify_playback",
+                    name = "Daily Listening",
+                    target = 1,
+                    cadence = "DAILY"
+                )
+            )
+        )
         com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
         com.streakkit.StreakKit.ping(this, "alify_playback")
         setupUI()
