@@ -558,7 +558,10 @@ namespace Alify.Features.Spotify.Services
                     _logger.LogInformation("Skipping flagged track: {TrackName} ({Reason})", currentTarget.FullTrack?.Name ?? "Unknown", skipReason);
                     try
                     {
-                        await spotify.Player.SkipNext();
+                        await WindowsAudioController.SoftGlideAsync(async () =>
+                        {
+                            await spotify.Player.SkipNext();
+                        });
                     }
                     catch (APIException apiEx)
                     {

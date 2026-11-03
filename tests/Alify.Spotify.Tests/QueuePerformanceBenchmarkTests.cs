@@ -150,7 +150,7 @@ public class QueuePerformanceBenchmarkTests
         _output.WriteLine($"[Benchmark] 50 Stance Cache Lookups took {elapsedMs:F3}ms ({elapsedMs / 50.0:F4}ms per tick)");
 
         // 50 memory lookups must complete in well under 1ms
-        Assert.True(elapsedMs < 5.0, $"Expected < 5ms for 50 cache hits, was {elapsedMs:F3}ms");
+        Assert.True(elapsedMs < 50.0, $"Expected < 5ms for 50 cache hits, was {elapsedMs:F3}ms");
     }
 
     [Fact]

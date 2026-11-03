@@ -10,8 +10,57 @@ using Microsoft.Extensions.Options;
 using Serilog;
 using SpotifyAPI.Web;
 using System.Security.Authentication;
-
 using Alify.Core.Infrastructure.Security;
+
+// CLI Mode Handling for Hujjify.exe
+if (args.Length > 0)
+{
+    var arg = args[0].ToLowerInvariant();
+    if (arg is "--soft-glide" or "--skip" or "-s")
+    {
+        Console.WriteLine("[Hujjify] Executing 350ms Soft Glide Skip...");
+        await WindowsAudioController.SoftGlideAsync(async () =>
+        {
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                var res = await client.PostAsync("http://127.0.0.1:5001/api/player/skip", null);
+                if (res.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("[Hujjify] Skip dispatched to running Hujjify service.");
+                    return;
+                }
+            }
+            catch { }
+
+            WindowsAudioController.SendMediaNextTrack();
+            Console.WriteLine("[Hujjify] Skip dispatched via Windows Media Bus.");
+        });
+        Console.WriteLine("[Hujjify] Soft Glide complete.");
+        return;
+    }
+    if (arg is "--duck" or "-d")
+    {
+        var vol = WindowsAudioController.DuckSpotifyVolume();
+        Console.WriteLine($"[Hujjify] Spotify.exe volume ducked to 0% (previous: {vol:P0}).");
+        return;
+    }
+    if (arg is "--restore" or "-r")
+    {
+        WindowsAudioController.SetSpotifyMasterVolume(1.0f);
+        Console.WriteLine("[Hujjify] Spotify.exe volume restored to 100%.");
+        return;
+    }
+    if (arg is "--help" or "-h")
+    {
+        Console.WriteLine("Hujjify Desktop CLI Commands:");
+        Console.WriteLine("  --soft-glide, -s   Instantly duck Spotify.exe, skip to next track, and smoothly fade in over 200ms");
+        Console.WriteLine("  --duck, -d         Instantly duck Spotify.exe volume to 0%");
+        Console.WriteLine("  --restore, -r      Restore Spotify.exe volume to 100%");
+        Console.WriteLine("  --help, -h         Display this help message");
+        return;
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -141,6 +190,48 @@ app.UseSession();
 app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
+
+// Minimal API endpoints for cross-device mobile triggers and local automation
+app.MapPost("/api/player/soft-glide", async (IServiceProvider sp) =>
+{
+    await WindowsAudioController.SoftGlideAsync(async () =>
+    {
+        try
+        {
+            using var scope = sp.CreateScope();
+            var spotifyService = scope.ServiceProvider.GetRequiredService<SpotifyService>();
+            var spotifyClient = await spotifyService.GetSpotifyClientAsync();
+            if (spotifyClient != null)
+            {
+                await spotifyClient.Player.SkipNext();
+                return;
+            }
+        }
+        catch { }
+
+        WindowsAudioController.SendMediaNextTrack();
+    });
+    return Results.Ok(new { message = "350ms Soft Glide Skip executed successfully" });
+});
+
+app.MapPost("/api/player/skip", async (IServiceProvider sp) =>
+{
+    try
+    {
+        using var scope = sp.CreateScope();
+        var spotifyService = scope.ServiceProvider.GetRequiredService<SpotifyService>();
+        var spotifyClient = await spotifyService.GetSpotifyClientAsync();
+        if (spotifyClient != null)
+        {
+            await spotifyClient.Player.SkipNext();
+            return Results.Ok(new { message = "Skipped via Spotify API" });
+        }
+    }
+    catch { }
+
+    WindowsAudioController.SendMediaNextTrack();
+    return Results.Ok(new { message = "Skipped via Windows Media Key" });
+});
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
