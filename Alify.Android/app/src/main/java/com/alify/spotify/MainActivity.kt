@@ -117,7 +117,8 @@ class MainActivity : AppCompatActivity() {
                 isFlagged = AlifyMonitorService.isLastFlagged,
                 flagReason = AlifyMonitorService.lastFlagReason,
                 flaggedLines = AlifyMonitorService.lastFlaggedLines,
-                lyrics = AlifyMonitorService.lastLyrics
+                lyrics = AlifyMonitorService.lastLyrics,
+                trackId = AlifyMonitorService.currentTrackId
             )
             startActivity(intent)
         }
@@ -158,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        // Toggle Protection Button
+        // Toggle Audio Protection Service Button
         binding.btnToggleProtection.setOnClickListener {
             if (AlifyMonitorService.isRunning) {
                 AlifyMonitorService.stop(this)
@@ -336,7 +337,8 @@ class MainActivity : AppCompatActivity() {
                             isFlagged = entry.statusBadge == "FLAGGED" || entry.statusBadge == "SKIPPED",
                             flagReason = entry.flagReason,
                             flaggedLines = entry.flaggedLines,
-                            lyrics = entry.lyrics
+                            lyrics = entry.lyrics,
+                            trackId = entry.trackId
                         )
                         startActivity(intent)
                     }

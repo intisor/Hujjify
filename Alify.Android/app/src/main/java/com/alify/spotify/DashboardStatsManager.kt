@@ -120,6 +120,115 @@ object DashboardStatsManager {
         editor.apply()
     }
 
+    /**
+     * Updates an existing track audit in place (e.g., when missing lyrics are recovered in background,
+     * or when re-audited / overridden by user). Correctly adjusts counters without double-counting.
+     */
+    @Synchronized
+    fun updateTrackAudit(
+        context: Context,
+        trackId: String,
+        title: String,
+        artist: String,
+        isFlagged: Boolean,
+        isSkipped: Boolean,
+        hasLyrics: Boolean,
+        flagReason: String?,
+        flaggedLines: List<String> = emptyList(),
+        lyrics: String? = null
+    ) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val recentList = getRecentTracks(context).toMutableList()
+
+        val existingIndex = recentList.indexOfFirst {
+            (trackId.isNotBlank() && it.trackId == trackId) ||
+            (it.title.equals(title, ignoreCase = true) && it.artist.equals(artist, ignoreCase = true))
+        }
+
+        if (existingIndex == -1) {
+            recordTrackAudit(
+                context = context,
+                trackId = trackId,
+                title = title,
+                artist = artist,
+                isFlagged = isFlagged,
+                isSkipped = isSkipped,
+                hasLyrics = hasLyrics,
+                flagReason = flagReason,
+                flaggedLines = flaggedLines,
+                lyrics = lyrics
+            )
+            return
+        }
+
+        val oldEntry = recentList[existingIndex]
+        val editor = prefs.edit()
+
+        val oldWasFlagged = oldEntry.statusBadge == "FLAGGED" || oldEntry.statusBadge == "SKIPPED"
+        val oldWasNoLyrics = oldEntry.statusBadge == "NO_LYRICS"
+        val oldWasClean = oldEntry.statusBadge == "CLEAN"
+
+        val newIsFlagged = isFlagged || isSkipped
+        val newIsNoLyrics = !hasLyrics
+        val newIsClean = !newIsFlagged && hasLyrics
+
+        if (oldWasNoLyrics && !newIsNoLyrics) {
+            val noLyrics = maxOf(0, prefs.getInt(KEY_TOTAL_NO_LYRICS, 0) - 1)
+            editor.putInt(KEY_TOTAL_NO_LYRICS, noLyrics)
+        }
+
+        if (oldWasClean && newIsFlagged) {
+            val clean = maxOf(0, prefs.getInt(KEY_TOTAL_CLEAN, 0) - 1)
+            editor.putInt(KEY_TOTAL_CLEAN, clean)
+            val flagged = prefs.getInt(KEY_TOTAL_FLAGGED, 0) + 1
+            editor.putInt(KEY_TOTAL_FLAGGED, flagged)
+        } else if (oldWasFlagged && newIsClean) {
+            val flagged = maxOf(0, prefs.getInt(KEY_TOTAL_FLAGGED, 0) - 1)
+            editor.putInt(KEY_TOTAL_FLAGGED, flagged)
+            val clean = prefs.getInt(KEY_TOTAL_CLEAN, 0) + 1
+            editor.putInt(KEY_TOTAL_CLEAN, clean)
+        } else if (oldWasNoLyrics && newIsFlagged) {
+            val flagged = prefs.getInt(KEY_TOTAL_FLAGGED, 0) + 1
+            editor.putInt(KEY_TOTAL_FLAGGED, flagged)
+        } else if (oldWasNoLyrics && newIsClean) {
+            val clean = prefs.getInt(KEY_TOTAL_CLEAN, 0) + 1
+            editor.putInt(KEY_TOTAL_CLEAN, clean)
+        }
+
+        val newStatus = when {
+            isSkipped -> "SKIPPED"
+            isFlagged -> "FLAGGED"
+            !hasLyrics -> "NO_LYRICS"
+            else -> "CLEAN"
+        }
+
+        val updatedEntry = oldEntry.copy(
+            statusBadge = newStatus,
+            flagReason = flagReason,
+            flaggedLines = flaggedLines,
+            lyrics = lyrics ?: oldEntry.lyrics
+        )
+        recentList[existingIndex] = updatedEntry
+
+        val jsonArray = JSONArray()
+        for (item in recentList) {
+            val obj = JSONObject().apply {
+                put("trackId", item.trackId)
+                put("title", item.title)
+                put("artist", item.artist)
+                put("timestamp", item.timestamp)
+                put("statusBadge", item.statusBadge)
+                put("flagReason", item.flagReason ?: "")
+                put("flaggedLines", JSONArray(item.flaggedLines))
+                put("lyrics", item.lyrics ?: "")
+            }
+            jsonArray.put(obj)
+        }
+
+        editor.putString(KEY_RECENT_TRACKS, jsonArray.toString())
+        editor.apply()
+    }
+
     @Synchronized
     fun getStats(context: Context): DashboardStats {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

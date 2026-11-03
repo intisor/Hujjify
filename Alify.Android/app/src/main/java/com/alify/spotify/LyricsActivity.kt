@@ -22,6 +22,7 @@ class LyricsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLyricsBinding
     private val lrclibClient = LrclibClient()
+    private var currentTrackId: String = ""
     private var currentTrackName: String = ""
     private var currentArtistName: String = ""
     private var currentIsFlagged: Boolean = false
@@ -31,6 +32,7 @@ class LyricsActivity : AppCompatActivity() {
     private var currentLyrics: String? = null
 
     companion object {
+        const val EXTRA_TRACK_ID = "extra_track_id"
         const val EXTRA_TRACK_NAME = "extra_track_name"
         const val EXTRA_ARTIST_NAME = "extra_artist_name"
         const val EXTRA_IS_FLAGGED = "extra_is_flagged"
@@ -45,9 +47,11 @@ class LyricsActivity : AppCompatActivity() {
             isFlagged: Boolean,
             flagReason: String?,
             flaggedLines: List<String>,
-            lyrics: String?
+            lyrics: String?,
+            trackId: String? = null
         ): Intent {
             return Intent(context, LyricsActivity::class.java).apply {
+                putExtra(EXTRA_TRACK_ID, trackId ?: "")
                 putExtra(EXTRA_TRACK_NAME, trackName)
                 putExtra(EXTRA_ARTIST_NAME, artistName)
                 putExtra(EXTRA_IS_FLAGGED, isFlagged)
@@ -69,15 +73,16 @@ class LyricsActivity : AppCompatActivity() {
 
         binding.btnRetryLyrics.setOnClickListener {
             LrclibClient.invalidateCache(currentArtistName, currentTrackName)
-            val cacheKey = if (currentTrackName.isNotBlank() && currentArtistName.isNotBlank()) {
+            val cacheKey = currentTrackId.ifBlank {
                 "${currentArtistName.trim().lowercase()}::${currentTrackName.trim().lowercase()}"
-            } else ""
+            }
             if (cacheKey.isNotBlank()) {
                 AlifyMonitorService.auditCache.remove(cacheKey)
             }
             fetchAndAuditLyrics(currentTrackName, currentArtistName, false, null, emptyList(), emptyMap())
         }
 
+        val trackId = intent.getStringExtra(EXTRA_TRACK_ID) ?: (AlifyMonitorService.currentTrackId ?: "")
         val trackName = intent.getStringExtra(EXTRA_TRACK_NAME) ?: AlifyMonitorService.lastTrackName
         val artistName = intent.getStringExtra(EXTRA_ARTIST_NAME) ?: AlifyMonitorService.lastArtistName
         val isFlagged = intent.getBooleanExtra(EXTRA_IS_FLAGGED, AlifyMonitorService.isLastFlagged)
@@ -86,6 +91,7 @@ class LyricsActivity : AppCompatActivity() {
         val lyrics = intent.getStringExtra(EXTRA_LYRICS) ?: AlifyMonitorService.lastLyrics
         val annotations = AlifyMonitorService.lastAnnotations
 
+        currentTrackId = trackId
         currentTrackName = trackName
         currentArtistName = artistName
         currentIsFlagged = isFlagged
@@ -157,7 +163,7 @@ class LyricsActivity : AppCompatActivity() {
             if (!fetchedLyrics.isNullOrBlank()) {
                 AlifyMonitorService.lastLyrics = fetchedLyrics
 
-                // If service hadn't finished auditing yet, audit directly now
+                // If service hadn't finished auditing yet or was unverified, evaluate directly now
                 if (!initialFlagged && initialFlaggedLines.isEmpty()) {
                     binding.tvLyricsStatusBadge.text = "⏳ Auditing..."
                     val evalResult = withContext(Dispatchers.IO) {
@@ -176,6 +182,22 @@ class LyricsActivity : AppCompatActivity() {
                     currentAnnotations = evalResult.annotations
                     currentLyrics = fetchedLyrics
 
+                    val cacheKey = currentTrackId.ifBlank { "${artistName.lowercase()}::${trackName.lowercase()}" }
+                    AlifyMonitorService.auditCache[cacheKey] = Pair(evalResult, fetchedLyrics)
+
+                    DashboardStatsManager.updateTrackAudit(
+                        context = this@LyricsActivity,
+                        trackId = currentTrackId.ifBlank { "${artistName}::${trackName}" },
+                        title = trackName,
+                        artist = artistName,
+                        isFlagged = evalResult.isFlagged,
+                        isSkipped = evalResult.isFlagged,
+                        hasLyrics = true,
+                        flagReason = evalResult.flagReason,
+                        flaggedLines = evalResult.flaggedLines,
+                        lyrics = fetchedLyrics
+                    )
+
                     SilentCorpusHarvester.recordEvaluation(
                         context = this@LyricsActivity,
                         trackName = trackName,
@@ -189,6 +211,18 @@ class LyricsActivity : AppCompatActivity() {
 
                     updateAuditHeader(evalResult.isFlagged, evalResult.flagReason, evalResult.flaggedLines)
                     displayLyrics(fetchedLyrics, evalResult.flaggedLines, evalResult.annotations)
+
+                    // If this track is currently playing on Spotify, update badge and skip if violating!
+                    if (trackName.equals(AlifyMonitorService.lastTrackName, ignoreCase = true)) {
+                        AlifyMonitorService.lastStatusBadge = if (evalResult.isFlagged) {
+                            "✕ Flagged: ${evalResult.flagReason}"
+                        } else {
+                            "✓ Clean (AI Verified)"
+                        }
+                        if (evalResult.isFlagged) {
+                            AlifyMonitorService.skipCurrentTrack(this@LyricsActivity)
+                        }
+                    }
                 } else {
                     binding.pbLyricsLoading.visibility = View.GONE
                     displayLyrics(fetchedLyrics, initialFlaggedLines, initialAnnotations)
@@ -209,59 +243,60 @@ class LyricsActivity : AppCompatActivity() {
         binding.svLyricsContent.visibility = View.VISIBLE
         binding.layoutNoLyrics.visibility = View.GONE
         binding.llLyricsContainer.removeAllViews()
+
         val lines = lyrics.lines()
         var lineNumber = 1
 
         for (rawLine in lines) {
             val line = rawLine.trim()
-
-            // Skip excessive blank lines
             if (line.isEmpty()) {
                 val spacer = View(this).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dpToPx(8)
+                        dpToPx(10)
                     )
                 }
                 binding.llLyricsContainer.addView(spacer)
                 continue
             }
 
-            // Section Header (e.g., [Verse 1], [Chorus])
+            // Section Headers [Chorus], [Verse 1], etc.
             if (line.startsWith("[") && line.endsWith("]")) {
                 val headerView = TextView(this).apply {
                     text = line
-                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.spotify_green))
-                    textSize = 13f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setPadding(0, dpToPx(12), 0, dpToPx(4))
+                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.accent_blue))
+                    textSize = 12f
+                    setTypeface(null, Typeface.BOLD)
+                    setPadding(0, dpToPx(8), 0, dpToPx(2))
                 }
                 binding.llLyricsContainer.addView(headerView)
                 continue
             }
 
-            // Check if line is flagged (exact or substring match)
-            val matchingFlag = flaggedLines.firstOrNull { flagged ->
-                flagged.isNotBlank() && (line.contains(flagged, ignoreCase = true) || flagged.contains(line, ignoreCase = true))
+            // Check if this line is flagged
+            val matchingFlagged = flaggedLines.firstOrNull { flagged ->
+                line.contains(flagged.trim(), ignoreCase = true) ||
+                flagged.trim().contains(line, ignoreCase = true)
             }
-            val isLineFlagged = matchingFlag != null
 
-            if (isLineFlagged) {
-                // Highlighted Flagged Verse Card
+            if (matchingFlagged != null) {
+                // Flagged Offending Verse Container
                 val flaggedContainer = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
-                    setBackgroundResource(R.drawable.bg_flagged_line)
-                    setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8))
-                    val params = LinearLayout.LayoutParams(
+                    setBackgroundResource(R.drawable.flagged_line_background)
+                    setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8))
+                    layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply {
-                        setMargins(0, dpToPx(4), 0, dpToPx(6))
+                        setMargins(0, dpToPx(3), 0, dpToPx(3))
                     }
-                    layoutParams = params
+                    setOnClickListener {
+                        showVerdictOverrideDialog(selectedLine = line)
+                    }
                 }
 
-                // Top row with line number and lyric text
+                // Lyric Line
                 val lineRow = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
@@ -269,7 +304,7 @@ class LyricsActivity : AppCompatActivity() {
 
                 val numView = TextView(this).apply {
                     text = "$lineNumber"
-                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red))
+                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red_light))
                     textSize = 12f
                     typeface = Typeface.MONOSPACE
                     minWidth = dpToPx(28)
@@ -278,25 +313,24 @@ class LyricsActivity : AppCompatActivity() {
 
                 val lyricView = TextView(this).apply {
                     text = line
-                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.spotify_light_text))
+                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red_light))
                     textSize = 14f
-                    typeface = Typeface.DEFAULT_BOLD
+                    setTypeface(null, Typeface.BOLD)
                 }
                 lineRow.addView(lyricView)
                 flaggedContainer.addView(lineRow)
 
-                // Subtext / Annotation Callout
-                val annotationText = annotations[matchingFlag] ?: annotations[line] ?: "Ethos Violation: explicit subtext"
-                val calloutView = TextView(this).apply {
-                    text = "⚠️ Flagged: $annotationText"
-                    setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red_light))
-                    textSize = 12f
-                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-                    setPadding(dpToPx(28), dpToPx(4), 0, 0)
-                }
-                flaggedContainer.addView(calloutView)
-                flaggedContainer.setOnClickListener {
-                    showVerdictOverrideDialog(selectedLine = line)
+                // Subtext annotation pill
+                val annotationText = annotations[matchingFlagged] ?: annotations[line]
+                if (!annotationText.isNullOrBlank()) {
+                    val annotationView = TextView(this).apply {
+                        text = "⚠️ $annotationText"
+                        setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red))
+                        textSize = 11f
+                        setTypeface(null, Typeface.ITALIC)
+                        setPadding(dpToPx(28), dpToPx(4), 0, 0)
+                    }
+                    flaggedContainer.addView(annotationView)
                 }
 
                 binding.llLyricsContainer.addView(flaggedContainer)
@@ -386,8 +420,34 @@ class LyricsActivity : AppCompatActivity() {
                 AlifyMonitorService.lastFlagReason = updated.flagReason
                 AlifyMonitorService.lastFlaggedLines = updated.flaggedLines
                 AlifyMonitorService.lastAnnotations = updated.annotations
-                val cacheKey = "${currentArtistName.trim().lowercase()}::${currentTrackName.trim().lowercase()}"
+                val cacheKey = currentTrackId.ifBlank {
+                    "${currentArtistName.trim().lowercase()}::${currentTrackName.trim().lowercase()}"
+                }
                 AlifyMonitorService.auditCache[cacheKey] = Pair(updated, currentLyrics)
+
+                DashboardStatsManager.updateTrackAudit(
+                    context = this,
+                    trackId = currentTrackId.ifBlank { "${currentArtistName}::${currentTrackName}" },
+                    title = currentTrackName,
+                    artist = currentArtistName,
+                    isFlagged = updated.isFlagged,
+                    isSkipped = updated.isFlagged,
+                    hasLyrics = !currentLyrics.isNullOrBlank(),
+                    flagReason = updated.flagReason,
+                    flaggedLines = updated.flaggedLines,
+                    lyrics = currentLyrics
+                )
+
+                if (currentTrackName.equals(AlifyMonitorService.lastTrackName, ignoreCase = true)) {
+                    AlifyMonitorService.lastStatusBadge = if (updated.isFlagged) {
+                        "✕ Flagged: ${updated.flagReason}"
+                    } else {
+                        "✓ Clean (User Override)"
+                    }
+                    if (updated.isFlagged) {
+                        AlifyMonitorService.skipCurrentTrack(this)
+                    }
+                }
 
                 updateAuditHeader(updated.isFlagged, updated.flagReason, updated.flaggedLines)
                 currentLyrics?.let {
@@ -398,7 +458,7 @@ class LyricsActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
+        }
 
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()

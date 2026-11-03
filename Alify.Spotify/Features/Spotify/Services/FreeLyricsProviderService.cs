@@ -205,7 +205,7 @@ namespace Alify.Features.Spotify.Services
                                         bool isMatch = false;
                                         if (!string.IsNullOrWhiteSpace(hitTitle) && !string.IsNullOrWhiteSpace(hitArtist))
                                         {
-                                            isMatch = IsCandidateMatch(hitArtist, hitTitle, cleanArtist, cleanTrack);
+                                             isMatch = IsCandidateMatch(hitArtist, hitTitle, cleanArtist, cleanTrack);
                                         }
                                         else if (!string.IsNullOrWhiteSpace(url))
                                         {
@@ -396,15 +396,23 @@ namespace Alify.Features.Spotify.Services
             if (string.IsNullOrEmpty(cArt) || string.IsNullOrEmpty(cTit) || string.IsNullOrEmpty(eArt) || string.IsNullOrEmpty(eTit))
                 return false;
 
-            bool titleMatches = cTit.Contains(eTit) || eTit.Contains(cTit);
+            var cTitNoSpace = cTit.Replace(" ", "").Replace("0", "o");
+            var eTitNoSpace = eTit.Replace(" ", "").Replace("0", "o");
+
+            bool titleMatches = cTit.Contains(eTit) || eTit.Contains(cTit) ||
+                                cTitNoSpace.Contains(eTitNoSpace) || eTitNoSpace.Contains(cTitNoSpace);
             if (!titleMatches) return false;
 
-            bool artMatches = cArt.Contains(eArt) || eArt.Contains(cArt);
+            var cArtNoSpace = cArt.Replace(" ", "").Replace("0", "o");
+            var eArtNoSpace = eArt.Replace(" ", "").Replace("0", "o");
+
+            bool artMatches = cArt.Contains(eArt) || eArt.Contains(cArt) ||
+                              cArtNoSpace.Contains(eArtNoSpace) || eArtNoSpace.Contains(cArtNoSpace);
             if (!artMatches)
             {
                 var eFirst = eArt.Split(' ').FirstOrDefault() ?? string.Empty;
                 var cFirst = cArt.Split(' ').FirstOrDefault() ?? string.Empty;
-                if (!string.IsNullOrEmpty(eFirst) && (cArt.Contains(eFirst) || eFirst == cFirst))
+                if (!string.IsNullOrEmpty(eFirst) && (cArt.Contains(eFirst) || eFirst == cFirst || cArtNoSpace.Contains(eFirst)))
                 {
                     artMatches = true;
                 }

@@ -28,6 +28,7 @@ class AlifyMonitorService : Service() {
     private val serviceJob = Job()
     private val scope = CoroutineScope(Dispatchers.IO + serviceJob)
     private var monitorLoopJob: Job? = null
+    private var lyricsRecoveryJob: Job? = null
     private val httpClient = OkHttpClient()
 
     private lateinit var authManager: SpotifyAuthManager
@@ -40,16 +41,17 @@ class AlifyMonitorService : Service() {
 
     private var lastTrackId: String? = null
     private var lastRecordedTrackId: String? = null
-    private val lyricsRetryCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     companion object {
         private const val TAG = "AlifyMonitorService"
         const val CHANNEL_ID = "alify_playback_protection"
         const val NOTIFICATION_ID = 1001
+        const val ACTION_SKIP = "com.alify.spotify.ACTION_SKIP"
 
         var isRunning = false
             private set
 
+        var currentTrackId: String? = null
         var lastTrackName: String = "No track playing"
         var lastArtistName: String = ""
         var lastStatusBadge: String = "✓ Ready"
@@ -66,6 +68,17 @@ class AlifyMonitorService : Service() {
             // Forces re-audit when user changes settings or requests re-check
             auditCache.clear()
             lastStatusBadge = "⏳ Re-auditing..."
+        }
+
+        fun skipCurrentTrack(context: Context) {
+            val intent = Intent(context, AlifyMonitorService::class.java).apply {
+                action = ACTION_SKIP
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
 
         fun start(context: Context) {
@@ -94,10 +107,19 @@ class AlifyMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_SKIP) {
+            scope.launch {
+                val token = authManager.getValidAccessToken()
+                if (token != null) {
+                    skipTrack(token)
+                }
+            }
+            return START_STICKY
+        }
+
         filterEngine = FilterEngine.fromPreferences(this)
         lastTrackId = null // Force fresh audit on service start/restart
         lastRecordedTrackId = null
-        lyricsRetryCounts.clear()
         if (monitorLoopJob?.isActive != true) {
             monitorLoopJob = scope.launch {
                 monitorLoop()
@@ -143,6 +165,7 @@ class AlifyMonitorService : Service() {
                 artists.getJSONObject(0).optString("name")
             } else "Unknown Artist"
 
+            currentTrackId = trackId
             lastTrackName = trackName
             lastArtistName = artistName
 
@@ -163,38 +186,29 @@ class AlifyMonitorService : Service() {
                 lyrics = cached?.second ?: LrclibClient.getCachedLyrics(artistName, trackName)
                 lastLyrics = lyrics
                 lastTrackId = trackId
-                lyricsRetryCounts.remove(cacheKey)
-            } else if (cached != null && lastStatusBadge != "⏳ Re-auditing...") {
+            } else if (cached != null && !cached.second.isNullOrBlank() && lastStatusBadge != "⏳ Re-auditing...") {
+                // Instant zero-latency full cache hit (lyrics present & verified)
                 result = cached.first
                 lyrics = cached.second
                 lastLyrics = lyrics
                 lastTrackId = trackId
-                lyricsRetryCounts.remove(cacheKey)
-                Log.d(TAG, "Instant zero-latency cache hit for track '$trackName': flagged=${result.isFlagged}")
+                Log.d(TAG, "Instant full cache hit for track '$trackName': flagged=${result.isFlagged}")
+            } else if (cached != null && cached.second.isNullOrBlank() && lastStatusBadge != "⏳ Re-auditing...") {
+                // Cached from queue lookahead without lyrics yet: use provisional result & start active recovery
+                result = cached.first
+                lyrics = null
+                lastLyrics = null
+                lastTrackId = trackId
+                Log.d(TAG, "Provisional cache hit (no lyrics) for '$trackName'. Launching recovery worker.")
+                launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
             } else {
                 lastStatusBadge = "⏳ Auditing with AI..."
                 updateNotification("Auditing: $trackName - $artistName")
 
-                // 1. Fetch Lyrics via parallel waterfall (LRCLIB + Genius parallel race)
+                // 1. Fetch Lyrics via parallel waterfall (LRCLIB + Genius parallel race + LLM fallback)
                 val aiKey = filterEngine.geminiApiKey
                 lyrics = lrclibClient.getLyrics(artistName, trackName, aiKey)
 
-                // If lyrics not found yet on first pass, provide a grace period / retry
-                if (lyrics.isNullOrBlank()) {
-                    val attempt = (lyricsRetryCounts[cacheKey] ?: 0) + 1
-                    lyricsRetryCounts[cacheKey] = attempt
-                    if (attempt < 2) {
-                        Log.d(TAG, "Lyrics taking time for '$trackName'. Grace attempt $attempt; waiting for retry...")
-                        lastStatusBadge = "⏳ Retrieving lyrics..."
-                        updateNotification("Retrieving lyrics: $trackName")
-                        lastLyrics = null
-                        // Do not lock lastTrackId yet; let the next monitor loop retry
-                        return
-                    }
-                }
-
-                // If lyrics found or attempts reached threshold
-                lyricsRetryCounts.remove(cacheKey)
                 lastLyrics = lyrics
                 lastTrackId = trackId
 
@@ -213,6 +227,11 @@ class AlifyMonitorService : Service() {
                     lyrics = lyrics,
                     result = result
                 )
+
+                // If lyrics were not found on this first pass, launch active background recovery worker!
+                if (lyrics.isNullOrBlank()) {
+                    launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
+                }
             }
 
             lastFlagReason = result.flagReason
@@ -245,15 +264,116 @@ class AlifyMonitorService : Service() {
                 isLastFlagged = false
                 lastStatusBadge = when {
                     !lyrics.isNullOrBlank() && result.isVerifiedByAi -> "✓ Clean (AI Verified)"
-                    lyrics.isNullOrBlank() -> "ℹ️ No lyrics indexed (Clean)"
+                    lyrics.isNullOrBlank() -> "ℹ️ No lyrics indexed (Searching in background...)"
                     else -> "⚠️ ${result.flagReason ?: "Unverified"}"
                 }
                 updateNotification("Playing: $trackName - $artistName")
             }
 
-            // Lookahead Queue Pre-Auditing: Quietly pre-audit the upcoming 1-2 tracks in the background
+            // Lookahead Queue Pre-Auditing: Quietly pre-audit the upcoming tracks in the background
             scope.launch {
                 preAuditUpcomingQueue(token)
+            }
+        }
+    }
+
+    /**
+     * Active Background Lyrics Recovery Worker:
+     * Continues searching for missing lyrics in the background while the song is playing.
+     * When lyrics are recovered:
+     * 1. Re-evaluates immediately with pure AI.
+     * 2. Updates auditCache & DashboardStats (converts NO_LYRICS to CLEAN or FLAGGED).
+     * 3. If flagged: immediately engages 350ms Soft Glide Skip!
+     */
+    private fun launchLyricsRecovery(
+        trackId: String,
+        trackName: String,
+        artistName: String,
+        isExplicit: Boolean,
+        cacheKey: String,
+        token: String
+    ) {
+        lyricsRecoveryJob?.cancel()
+        lyricsRecoveryJob = scope.launch {
+            try {
+                Log.i(TAG, "Starting background lyrics recovery worker for '$trackName' by '$artistName'")
+
+                // Attempt 1: short 3s backoff to allow network jitter or external rate limits to clear
+                delay(3000)
+                if (!isActive || lastTrackId != trackId) return@launch
+
+                LrclibClient.invalidateCache(artistName, trackName)
+                val aiKey = filterEngine.geminiApiKey
+                var recovered = lrclibClient.getLyrics(artistName, trackName, aiKey)
+
+                // Attempt 2: wait 5s and retry with alternate search variants
+                if (recovered.isNullOrBlank()) {
+                    delay(5000)
+                    if (!isActive || lastTrackId != trackId) return@launch
+                    recovered = lrclibClient.getLyrics(artistName, trackName, aiKey)
+                }
+
+                if (!recovered.isNullOrBlank()) {
+                    Log.i(TAG, "RECOVERY SUCCESS: Retrieved lyrics for '$trackName' (${recovered.length} chars)")
+
+                    // Re-evaluate with AI using the full recovered lyrics
+                    val newResult = filterEngine.evaluate(trackName, artistName, isExplicit, recovered)
+
+                    // Update audit cache with the recovered lyrics
+                    auditCache[cacheKey] = Pair(newResult, recovered)
+
+                    // Update persistent Dashboard Statistics (replaces NO_LYRICS with verified status in-place)
+                    DashboardStatsManager.updateTrackAudit(
+                        context = this@AlifyMonitorService,
+                        trackId = trackId,
+                        title = trackName,
+                        artist = artistName,
+                        isFlagged = newResult.isFlagged,
+                        isSkipped = newResult.isFlagged,
+                        hasLyrics = true,
+                        flagReason = newResult.flagReason,
+                        flaggedLines = newResult.flaggedLines,
+                        lyrics = recovered
+                    )
+
+                    SilentCorpusHarvester.recordEvaluation(
+                        context = this@AlifyMonitorService,
+                        trackName = trackName,
+                        artistName = artistName,
+                        profile = filterEngine.profile,
+                        strictness = filterEngine.strictness,
+                        customDirective = filterEngine.customEthosPrompt,
+                        lyrics = recovered,
+                        result = newResult
+                    )
+
+                    // If this song is still the currently playing track on Spotify:
+                    if (lastTrackId == trackId) {
+                        lastLyrics = recovered
+                        lastFlagReason = newResult.flagReason
+                        lastFlaggedLines = newResult.flaggedLines
+                        lastAnnotations = newResult.annotations
+
+                        if (newResult.isFlagged) {
+                            isLastFlagged = true
+                            lastStatusBadge = "✕ Flagged: ${newResult.flagReason}"
+                            updateNotification("Skipping: $trackName (${newResult.flagReason})")
+                            skipTrack(token)
+                        } else {
+                            isLastFlagged = false
+                            lastStatusBadge = "✓ Clean (AI Verified)"
+                            updateNotification("Playing: $trackName - $artistName")
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Background recovery concluded: no lyrics indexed for '$trackName'")
+                    if (lastTrackId == trackId && lastStatusBadge.contains("Searching in background")) {
+                        lastStatusBadge = "ℹ️ No lyrics indexed (Clean)"
+                        updateNotification("Playing: $trackName - $artistName")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error in background lyrics recovery: ${e.message}")
             }
         }
     }
@@ -429,6 +549,7 @@ class AlifyMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        lyricsRecoveryJob?.cancel()
         serviceJob.cancel()
         // Safety: If service is destroyed while volume was ducked, restore user's volume
         try {

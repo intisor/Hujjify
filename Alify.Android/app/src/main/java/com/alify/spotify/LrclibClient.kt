@@ -36,6 +36,8 @@ class LrclibClient {
         fun invalidateCache(artist: String, track: String) {
             val rawKey = "${artist.trim().lowercase()}::${track.trim().lowercase()}"
             lyricsCache.remove(rawKey)
+            val cleanKey = "${artist.trim().lowercase()}::${track.trim().replace(Regex("""[\(\[][^\)\]]*[\)\]]"""), "").trim().lowercase()}"
+            lyricsCache.remove(cleanKey)
         }
 
         fun isCandidateMatch(
@@ -60,13 +62,21 @@ class LrclibClient {
 
             if (cArt.isBlank() || cTit.isBlank() || eArt.isBlank() || eTit.isBlank()) return false
 
-            val titleMatches = cTit.contains(eTit) || eTit.contains(cTit)
+            val cTitNoSpace = cTit.replace(" ", "").replace("0", "o")
+            val eTitNoSpace = eTit.replace(" ", "").replace("0", "o")
+
+            val titleMatches = cTit.contains(eTit) || eTit.contains(cTit) ||
+                    cTitNoSpace.contains(eTitNoSpace) || eTitNoSpace.contains(cTitNoSpace)
             if (!titleMatches) return false
 
-            val artMatches = cArt.contains(eArt) || eArt.contains(cArt) || run {
+            val cArtNoSpace = cArt.replace(" ", "").replace("0", "o")
+            val eArtNoSpace = eArt.replace(" ", "").replace("0", "o")
+
+            val artMatches = cArt.contains(eArt) || eArt.contains(cArt) ||
+                    cArtNoSpace.contains(eArtNoSpace) || eArtNoSpace.contains(cArtNoSpace) || run {
                 val eFirst = eArt.split(" ").firstOrNull() ?: ""
                 val cFirst = cArt.split(" ").firstOrNull() ?: ""
-                eFirst.isNotBlank() && (cArt.contains(eFirst) || eFirst == cFirst)
+                eFirst.isNotBlank() && (cArt.contains(eFirst) || eFirst == cFirst || cArtNoSpace.contains(eFirst))
             }
 
             return artMatches
@@ -110,6 +120,9 @@ class LrclibClient {
             if (it.isNotBlank()) return@withContext it
         }
 
+        val baseTrack = cleanTrack.replace(Regex("""[\(\[][^\)\]]*[\)\]]"""), "").trim()
+        val dotFreeTrack = baseTrack.replace(".", "").trim()
+
         // Parallel Tier 1: Race LRCLIB and Genius Direct Scraper concurrently (first non-empty result wins)
         val tier1Lyrics = coroutineScope {
             val channel = Channel<String>(2)
@@ -117,13 +130,18 @@ class LrclibClient {
                 try {
                     val res = fetchLrclibGet(rawArtist, rawTrack)
                         ?: (if (cleanTrack != rawTrack || cleanArtist != rawArtist) fetchLrclibGet(cleanArtist, cleanTrack) else null)
+                        ?: (if (baseTrack != cleanTrack) fetchLrclibGet(cleanArtist, baseTrack) else null)
+                        ?: (if (dotFreeTrack != baseTrack) fetchLrclibGet(cleanArtist, dotFreeTrack) else null)
                         ?: fetchLrclibSearch(cleanArtist, cleanTrack)
+                        ?: (if (baseTrack != cleanTrack) fetchLrclibSearch(cleanArtist, baseTrack) else null)
                     if (!res.isNullOrBlank()) channel.trySend(res)
                 } catch (_: Exception) { }
             }
             val j2 = launch(Dispatchers.IO) {
                 try {
                     val res = fetchGeniusDirect(cleanArtist, cleanTrack)
+                        ?: (if (baseTrack != cleanTrack) fetchGeniusDirect(cleanArtist, baseTrack) else null)
+                        ?: (if (dotFreeTrack != baseTrack) fetchGeniusDirect(cleanArtist, dotFreeTrack) else null)
                     if (!res.isNullOrBlank()) channel.trySend(res)
                 } catch (_: Exception) { }
             }
@@ -245,43 +263,56 @@ class LrclibClient {
      */
     private fun fetchGeniusDirect(artist: String, track: String): String? {
         return try {
-            val query = "$artist $track".trim()
-            val searchUrl = "https://genius.com/api/search".toHttpUrlOrNull()?.newBuilder()
-                ?.addQueryParameter("q", query)
-                ?.build() ?: return null
-
-            val searchRequest = Request.Builder()
-                .url(searchUrl)
-                .header("User-Agent", BROWSER_UA)
-                .header("Accept", "application/json")
-                .build()
+            val queryVariants = mutableListOf("$artist $track".trim())
+            val base = track.replace(Regex("""[\(\[][^\)\]]*[\)\]]"""), "").trim()
+            if (base != track && base.isNotBlank()) {
+                queryVariants.add("$artist $base".trim())
+            }
+            val dotFree = base.replace(".", "").trim()
+            if (dotFree != base && dotFree.isNotBlank()) {
+                queryVariants.add("$artist $dotFree".trim())
+            }
 
             var songUrl: String? = null
-            httpClient.newCall(searchRequest).execute().use { response ->
-                if (response.isSuccessful) {
-                    val body = response.body?.string()
-                    if (!body.isNullOrBlank()) {
-                        val root = JSONObject(body)
-                        val hits = root.optJSONObject("response")?.optJSONArray("hits")
-                        if (hits != null) {
-                            for (i in 0 until hits.length()) {
-                                val hit = hits.getJSONObject(i)
-                                val result = hit.optJSONObject("result") ?: continue
-                                val hitTitle = result.optString("title", "")
-                                val hitArtist = result.optJSONObject("primary_artist")?.optString("name", "") ?: ""
-                                val url = result.optString("url", "")
 
-                                if (url.isNotBlank() && url.contains("-lyrics") && isCandidateMatch(hitArtist, hitTitle, artist, track)) {
-                                    Log.i(TAG, "Stage 4 (Genius Search): Verified candidate '$hitTitle' by '$hitArtist' (URL: $url)")
-                                    songUrl = url
-                                    break
-                                } else {
-                                    Log.d(TAG, "Genius candidate rejected: '$hitTitle' by '$hitArtist' does not match '$track' by '$artist'")
+            for (query in queryVariants) {
+                val searchUrl = "https://genius.com/api/search".toHttpUrlOrNull()?.newBuilder()
+                    ?.addQueryParameter("q", query)
+                    ?.build() ?: continue
+
+                val searchRequest = Request.Builder()
+                    .url(searchUrl)
+                    .header("User-Agent", BROWSER_UA)
+                    .header("Accept", "application/json")
+                    .build()
+
+                httpClient.newCall(searchRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrBlank()) {
+                            val root = JSONObject(body)
+                            val hits = root.optJSONObject("response")?.optJSONArray("hits")
+                            if (hits != null) {
+                                for (i in 0 until hits.length()) {
+                                    val hit = hits.getJSONObject(i)
+                                    val result = hit.optJSONObject("result") ?: continue
+                                    val hitTitle = result.optString("title", "")
+                                    val hitArtist = result.optJSONObject("primary_artist")?.optString("name", "") ?: ""
+                                    val url = result.optString("url", "")
+
+                                    if (url.isNotBlank() && url.contains("-lyrics") && isCandidateMatch(hitArtist, hitTitle, artist, track)) {
+                                        Log.i(TAG, "Stage 4 (Genius Search): Verified candidate '$hitTitle' by '$hitArtist' (URL: $url)")
+                                        songUrl = url
+                                        break
+                                    } else {
+                                        Log.d(TAG, "Genius candidate rejected: '$hitTitle' by '$hitArtist' does not match '$track' by '$artist'")
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                if (!songUrl.isNullOrBlank()) break
             }
 
             if (songUrl.isNullOrBlank()) return null
@@ -343,9 +374,8 @@ class LrclibClient {
         if (extractedBlocks.isEmpty()) return null
 
         val cleanParts = mutableListOf<String>()
-        for (rawBlock in extractedBlocks) {
-            var b = rawBlock
-                .replace(Regex("""(?s)<div[^>]*data-exclude-from-selection="true"[^>]*>.*?</div>"""), "")
+        for (block in extractedBlocks) {
+            var b = block
                 .replace(Regex("""(?i)<br\s*/?>"""), "\n")
                 .replace(Regex("""<[^>]+>"""), "")
             @Suppress("DEPRECATION")
@@ -379,10 +409,17 @@ class LrclibClient {
     }
 
     private fun fetchLyricsFromLlm(artist: String, track: String, userApiKey: String?): String? {
+        val baseTrack = track.replace(Regex("""[\(\[][^\)\]]*[\)\]]"""), "").trim()
+        val titleDescriptor = if (baseTrack != track && baseTrack.isNotBlank()) {
+            "\"$baseTrack\" (also titled \"$track\")"
+        } else {
+            "\"$track\""
+        }
+
         val prompt = """
             You are a comprehensive lyrical catalog.
             Provide the complete lyrics for:
-            Song: "$track"
+            Song: $titleDescriptor
             Artist: "$artist"
 
             RULES:
