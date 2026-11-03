@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
             context = this,
             rules = listOf(
                 com.streakkit.StreakRule(
-                    slug = "alify_playback",
+                    slug = "hujjify_playback",
                     name = "Daily Listening",
                     target = 1,
                     cadence = "DAILY"
@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             )
         )
         com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
-        com.streakkit.StreakKit.ping(this, "alify_playback")
+        com.streakkit.StreakKit.ping(this, "hujjify_playback")
         setupUI()
         handleRedirectIntent(intent)
         startUiPolling()
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupUI() {
         // StreakKit Drop-In Modal
         binding.cardStreak.setOnClickListener {
-            com.streakkit.StreakKit.showModal(this, "alify_playback")
+            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
         }
 
         // Settings Navigation

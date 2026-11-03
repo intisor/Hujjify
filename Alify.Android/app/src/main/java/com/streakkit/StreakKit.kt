@@ -53,7 +53,7 @@ object StreakKit {
     private const val KEY_QUEUE = "offline_queue"
 
     var endpoint: String = "http://10.0.2.2:3000"
-    var publicKey: String = "pk_live_alify_456"
+    var publicKey: String = "pk_live_hujjify_456"
 
     private val configuredRules = mutableMapOf<String, StreakRule>()
 

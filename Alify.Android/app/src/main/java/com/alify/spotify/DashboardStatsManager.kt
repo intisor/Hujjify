@@ -73,7 +73,7 @@ object DashboardStatsManager {
         }
 
         // StreakKit drop-in: ping on any track activity (clean or skipped listening session)
-        com.streakkit.StreakKit.ping(context, "alify_playback")
+        com.streakkit.StreakKit.ping(context, "hujjify_playback")
 
         // 3. Add to recent tracks FIFO list
         val recentList = getRecentTracks(context).toMutableList()
