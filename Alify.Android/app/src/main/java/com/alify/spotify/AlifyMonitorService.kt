@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -32,6 +33,10 @@ class AlifyMonitorService : Service() {
     private lateinit var authManager: SpotifyAuthManager
     private val lrclibClient = LrclibClient()
     private var filterEngine = FilterEngine()
+
+    private var audioManager: AudioManager? = null
+    private var preDuckVolume: Int? = null
+    private var fadeJob: Job? = null
 
     private var lastTrackId: String? = null
     private var lastRecordedTrackId: String? = null
@@ -82,6 +87,7 @@ class AlifyMonitorService : Service() {
         super.onCreate()
         authManager = SpotifyAuthManager(this)
         filterEngine = FilterEngine.fromPreferences(this)
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Active - Hujjify AI Protection On"))
         isRunning = true
@@ -301,17 +307,87 @@ class AlifyMonitorService : Service() {
         }
     }
 
+    /**
+     * Zero-Lag 350ms Soft Glide:
+     * 1. Instantly ducks hardware STREAM_MUSIC to 0 (0ms latency, zero explicit leakage, no harsh audio pop).
+     * 2. Issues Spotify skip command asynchronously (POST /v1/me/player/next).
+     * 3. Once track switches, smoothly ramps volume back up to original level over ~200ms.
+     */
     private fun skipTrack(token: String) {
-        try {
-            val request = Request.Builder()
-                .url("https://api.spotify.com/v1/me/player/next")
-                .header("Authorization", "Bearer $token")
-                .post("".toRequestBody(null))
-                .build()
+        duckAudioImmediate()
 
-            httpClient.newCall(request).execute().close()
+        scope.launch {
+            try {
+                val request = Request.Builder()
+                    .url("https://api.spotify.com/v1/me/player/next")
+                    .header("Authorization", "Bearer $token")
+                    .post("".toRequestBody(null))
+                    .build()
+
+                httpClient.newCall(request).execute().close()
+                Log.d(TAG, "Spotify skip dispatched successfully. Starting volume glide restore...")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to skip track: ${e.message}", e)
+            } finally {
+                glideVolumeRestore()
+            }
+        }
+    }
+
+    private fun duckAudioImmediate() {
+        try {
+            val am = audioManager ?: return
+            fadeJob?.cancel() // Stop any current fade-in coroutine
+
+            // Cache user's volume level before ducking (only if not already ducked)
+            if (preDuckVolume == null) {
+                val currentVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                if (currentVol > 0) {
+                    preDuckVolume = currentVol
+                }
+            }
+
+            // Mute music stream instantly without popping volume HUD (flags = 0)
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            Log.d(TAG, "Instant hardware volume duck engaged (saved pre-duck volume: $preDuckVolume)")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to skip track: ${e.message}", e)
+            Log.w(TAG, "Could not duck audio stream: ${e.message}")
+        }
+    }
+
+    private fun glideVolumeRestore() {
+        fadeJob?.cancel()
+        fadeJob = scope.launch {
+            try {
+                val am = audioManager ?: return@launch
+                val target = preDuckVolume ?: return@launch
+                if (target <= 0) {
+                    preDuckVolume = null
+                    return@launch
+                }
+
+                // Short 50ms buffer for Spotify audio subsystem to lock onto the new song stream
+                delay(50)
+
+                // Smoothly step volume back up over ~150-200ms
+                val steps = minOf(4, target)
+                val stepDelay = 150L / steps.coerceAtLeast(1)
+
+                for (i in 1..steps) {
+                    delay(stepDelay)
+                    if (!isActive) return@launch
+                    val intermediate = (target * i) / steps
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, intermediate, 0)
+                }
+
+                // Ensure exact restoration to user's original volume
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+                Log.d(TAG, "Audio volume smoothly restored to level $target")
+            } catch (e: Exception) {
+                Log.w(TAG, "Error during volume glide restore: ${e.message}")
+            } finally {
+                preDuckVolume = null
+            }
         }
     }
 
@@ -354,6 +430,12 @@ class AlifyMonitorService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
+        // Safety: If service is destroyed while volume was ducked, restore user's volume
+        try {
+            preDuckVolume?.let { vol ->
+                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, vol, 0)
+            }
+        } catch (_: Exception) {}
         isRunning = false
     }
 
