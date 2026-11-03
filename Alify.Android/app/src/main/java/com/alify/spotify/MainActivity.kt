@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnToggleProtection.setOnClickListener {
             if (AlifyMonitorService.isRunning) {
                 AlifyMonitorService.stop(this)
-                binding.btnToggleProtection.text = "Start Halal Protection"
+                binding.btnToggleProtection.text = "Start Protection"
                 binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_blue))
             } else {
                 AlifyMonitorService.start(this)
@@ -222,7 +222,7 @@ class MainActivity : AppCompatActivity() {
                 binding.btnToggleProtection.text = "Pause Protection"
                 binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.flag_red))
             } else {
-                binding.btnToggleProtection.text = "Start Halal Protection"
+                binding.btnToggleProtection.text = "Start Protection"
                 binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_blue))
             }
         } else {
