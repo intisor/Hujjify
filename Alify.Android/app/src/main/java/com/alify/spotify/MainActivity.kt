@@ -320,17 +320,17 @@ class MainActivity : AppCompatActivity() {
             binding.tvNoRecentActivity.visibility = View.GONE
             binding.layoutRecentTracks.removeAllViews()
 
-            for (entry in recentTracks.take(8)) {
+            for (entry in recentTracks.take(3)) {
                 val row = LinearLayout(this).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply {
-                        setMargins(0, 0, 0, 16)
+                        setMargins(0, 0, 0, 8)
                     }
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    setPadding(20, 14, 20, 14)
+                    setPadding(16, 8, 16, 8)
                     setBackgroundResource(R.drawable.stat_box_background)
                     isClickable = true
                     isFocusable = true
@@ -357,7 +357,7 @@ class MainActivity : AppCompatActivity() {
                 val titleTv = TextView(this).apply {
                     text = entry.title
                     setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
-                    textSize = 13f
+                    textSize = 12f
                     setTypeface(null, Typeface.BOLD)
                     maxLines = 1
                     ellipsize = TextUtils.TruncateAt.END
@@ -366,7 +366,7 @@ class MainActivity : AppCompatActivity() {
                 val artistTv = TextView(this).apply {
                     text = entry.artist
                     setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_sub_text))
-                    textSize = 11f
+                    textSize = 10f
                     maxLines = 1
                     ellipsize = TextUtils.TruncateAt.END
                 }
@@ -375,8 +375,8 @@ class MainActivity : AppCompatActivity() {
                 textLayout.addView(artistTv)
 
                 val badgeTv = TextView(this).apply {
-                    setPadding(18, 6, 18, 6)
-                    textSize = 10f
+                    setPadding(12, 4, 12, 4)
+                    textSize = 9f
                     setTypeface(null, Typeface.BOLD)
                     setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
 
