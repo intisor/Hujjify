@@ -50,9 +50,14 @@ class MainActivity : AppCompatActivity() {
             rules = listOf(
                 com.streakkit.StreakRule(
                     slug = "hujjify_playback",
-                    name = "Daily Listening",
+                    name = "Conscious Audio Streak",
                     target = 1,
-                    cadence = "DAILY"
+                    cadence = "DAILY",
+                    gracePeriodMinutes = 120,
+                    maxFreezes = 3,
+                    daysOff = listOf(5), // Friday rest day
+                    freezeAutoEarnDays = 7, // Auto-earn +1 freeze every 7 consecutive days
+                    restoreWindowDays = 90
                 )
             )
         )
