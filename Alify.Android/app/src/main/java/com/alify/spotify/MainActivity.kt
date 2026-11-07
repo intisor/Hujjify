@@ -105,9 +105,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
-        // StreakKit Drop-In Modal
+        // StreakKit Drop-In Modal (Tap -> Streak Modal, Long-Press -> Duolingo Winding Path UI)
         binding.cardStreak.setOnClickListener {
             com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+        }
+        binding.cardStreak.setOnLongClickListener {
+            com.streakkit.StreakKit.showDuolingoPath(
+                activity = this,
+                ruleSlug = "hujjify_playback",
+                flag = "🎧",
+                unitTitle = "Conscious Listening",
+                unitSubtitle = "Audit clean tracks & guard your ears"
+            )
+            true
         }
 
         // Settings Navigation

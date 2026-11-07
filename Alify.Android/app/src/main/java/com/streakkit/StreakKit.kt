@@ -23,6 +23,7 @@ import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
@@ -67,6 +68,14 @@ object StreakKit {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val listeners = mutableListOf<(JSONObject) -> Unit>()
+    private val milestoneListeners = mutableListOf<(ruleSlug: String, milestoneDay: Int) -> Unit>()
+
+    /**
+     * Register a listener for when a user unlocks a milestone day (e.g. 3, 7, 14, 30, 100 days).
+     */
+    fun onMilestoneReached(listener: (ruleSlug: String, milestoneDay: Int) -> Unit) {
+        milestoneListeners.add(listener)
+    }
 
     /**
      * Initialize SDK with API keys and declared developer rules (via list or JSON string).
@@ -186,8 +195,13 @@ object StreakKit {
                     val body = response.body?.string() ?: return
                     val json = try { JSONObject(body) } catch (_: Exception) { return }
                     saveState(context, json)
+                    val milestoneObj = json.optJSONObject("milestone")
+                    val justReached = milestoneObj?.optInt("justReached", -1) ?: -1
                     mainHandler.post {
                         listeners.forEach { it(json) }
+                        if (justReached > 0) {
+                            milestoneListeners.forEach { it(ruleSlug, justReached) }
+                        }
                         onSuccess?.invoke(json)
                     }
                     flushQueue(context)
@@ -305,6 +319,13 @@ object StreakKit {
                                 putExtra(Intent.EXTRA_TEXT, text)
                             }
                             activity.startActivity(Intent.createChooser(intent, "Share Streak Milestone"))
+                        }
+                    }
+
+                    @JavascriptInterface
+                    fun onMilestone(slug: String, day: Int) {
+                        activity.runOnUiThread {
+                            milestoneListeners.forEach { it(slug, day) }
                         }
                     }
                 }, "StreakBridge")
@@ -544,6 +565,308 @@ object StreakKit {
 
             override fun onResponse(call: Call, response: Response) {
                 mainHandler.post { onComplete?.invoke(response.isSuccessful) }
+            }
+        })
+    }
+
+    /**
+     * Cross-Action Behavioral Contrast Nudges (Counter-Habit Nudge Engine)
+     * e.g. "You listened to music for 45 mins, but did not protect your deen?"
+     */
+    fun evaluateContrastNudge(
+        context: Context,
+        userId: String,
+        neglectedRuleSlug: String,
+        triggerAction: String,
+        triggerLabel: String,
+        durationMinutes: Int? = null,
+        archetype: String = "GUILT_PRIORITY",
+        customCopies: List<String> = emptyList(),
+        autoShowNotification: Boolean = true,
+        onResult: ((JSONObject?) -> Unit)? = null
+    ) {
+        val triggerObj = JSONObject().apply {
+            put("action", triggerAction)
+            put("label", triggerLabel)
+            if (durationMinutes != null) put("durationMinutes", durationMinutes)
+        }
+
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("neglectedRuleSlug", neglectedRuleSlug)
+            put("triggerActivity", triggerObj)
+            put("archetype", archetype)
+            if (customCopies.isNotEmpty()) {
+                put("customCopies", JSONArray(customCopies))
+            }
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/notifications/contrast")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult?.invoke(null) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val notif = json.optJSONObject("notification")
+                val completedToday = json.optBoolean("completedToday", false)
+
+                if (autoShowNotification && notif != null && !completedToday) {
+                    val title = notif.optString("title", "🔥 Streak Alert")
+                    val bodyText = notif.optString("body", "Protect your streak today!")
+                    StreakNotificationManager.showContrastNotification(
+                        context = context,
+                        title = title,
+                        body = bodyText,
+                        neglectedRuleSlug = neglectedRuleSlug,
+                        triggerAction = triggerAction
+                    )
+                }
+
+                mainHandler.post { onResult?.invoke(notif) }
+            }
+        })
+    }
+
+    /**
+     * Streak Amnesty: Evaluates quarterly/dormant streak resurrection offer.
+     */
+    fun checkStreakAmnesty(
+        ruleSlug: String,
+        userId: String = "user_default",
+        minDormantDays: Int = 7,
+        onResult: (JSONObject?) -> Unit
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+            put("minDormantDays", minDormantDays)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/amnesty/evaluate")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult(null) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val eval = json.optJSONObject("evaluation")
+                mainHandler.post { onResult(eval) }
+            }
+        })
+    }
+
+    /**
+     * Claims Streak Amnesty and resurrects user's broken streak.
+     */
+    fun claimStreakAmnesty(
+        ruleSlug: String,
+        userId: String = "user_default",
+        onComplete: (Boolean, Int) -> Unit
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/amnesty/claim")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete(false, 0) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val success = json.optBoolean("success", false)
+                val resurrected = json.optInt("resurrectedStreak", 0)
+                mainHandler.post { onComplete(success, resurrected) }
+            }
+        })
+    }
+
+    /**
+     * Registers a Firebase Cloud Messaging (FCM) or push token with StreakKit.
+     */
+    fun registerPushToken(
+        userId: String = "user_default",
+        pushToken: String,
+        platform: String = "FCM",
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("externalUserId", userId)
+            put("pushToken", pushToken)
+            put("platform", platform)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/users/push-token")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete?.invoke(false) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { onComplete?.invoke(response.isSuccessful) }
+            }
+        })
+    }
+
+    /**
+     * Opens the full Duolingo-in-a-Box Winding Path UI (Top Bar with Flag + Streak + Gems + Hearts,
+     * Daily XP Goal Bar, Unit Banner, and Winding S-Curve Lesson Nodes) in a native BottomSheetDialog.
+     */
+    fun showDuolingoPath(
+        activity: Activity,
+        ruleSlug: String,
+        userId: String = "user_default",
+        flag: String = "🇳🇬",
+        unitTitle: String = "Greetings",
+        unitSubtitle: String = "Say hello and introduce yourself"
+    ) {
+        activity.runOnUiThread {
+            val dialog = BottomSheetDialog(activity)
+            val webView = WebView(activity).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    (activity.resources.displayMetrics.heightPixels * 0.92).toInt()
+                )
+                setBackgroundColor(Color.parseColor("#131f24"))
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                val tz = URLEncoder.encode(TimeZone.getDefault().id, "UTF-8")
+                val f = URLEncoder.encode(flag, "UTF-8")
+                val ut = URLEncoder.encode(unitTitle, "UTF-8")
+                val us = URLEncoder.encode(unitSubtitle, "UTF-8")
+                loadUrl("${endpoint.trimEnd('/')}/v1/embed/path/$ruleSlug/$userId?timezone=$tz&flag=$f&unitTitle=$ut&unitSubtitle=$us")
+            }
+            dialog.setContentView(webView)
+            dialog.show()
+        }
+    }
+
+    /**
+     * Deducts a heart when a user answers a quiz/lesson question wrong.
+     */
+    fun consumeHeart(
+        userId: String = "user_default",
+        count: Int = 1,
+        onResult: ((heartsRemaining: Int, outOfHearts: Boolean) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("count", count)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/hearts/consume")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val heartsObj = json.optJSONObject("hearts")
+                val current = heartsObj?.optInt("current", 5) ?: 5
+                val out = heartsObj?.optBoolean("outOfHearts", false) ?: false
+                mainHandler.post { onResult?.invoke(current, out) }
+            }
+        })
+    }
+
+    /**
+     * Refills user hearts via GEMS (default 50 gems), PRACTICE (+1 heart), or AD (+1 heart).
+     */
+    fun refillHearts(
+        userId: String = "user_default",
+        method: String = "GEMS",
+        onResult: ((heartsCurrent: Int, gemsBalance: Int) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("method", method)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/hearts/refill")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val current = json.optJSONObject("hearts")?.optInt("current", 5) ?: 5
+                val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
+                mainHandler.post { onResult?.invoke(current, gems) }
+            }
+        })
+    }
+
+    /**
+     * Awards XP toward the daily goal (e.g., +10 XP for completing a lesson).
+     */
+    fun addXp(
+        userId: String = "user_default",
+        amount: Int = 10,
+        unitId: String? = null,
+        onResult: ((xpToday: Int, dailyGoalCompleted: Boolean, gemsBalance: Int) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("amount", amount)
+            if (unitId != null) put("unitId", unitId)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/xp/add")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val xpObj = json.optJSONObject("xp")
+                val xpToday = xpObj?.optInt("today", 0) ?: 0
+                val goalDone = xpObj?.optBoolean("dailyGoalCompleted", false) ?: false
+                val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
+                mainHandler.post { onResult?.invoke(xpToday, goalDone, gems) }
             }
         })
     }

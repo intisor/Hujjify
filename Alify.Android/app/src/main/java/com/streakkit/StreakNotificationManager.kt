@@ -49,7 +49,8 @@ object StreakNotificationManager {
         title: String,
         body: String,
         ruleSlug: String,
-        urgency: String
+        urgency: String,
+        targetTimestampMs: Long = 0L
     ) {
         createNotificationChannel(context)
 
@@ -68,7 +69,7 @@ object StreakNotificationManager {
         )
 
         val smallIcon = context.applicationInfo.icon
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(body)
@@ -77,13 +78,44 @@ object StreakNotificationManager {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .build()
+            .setColor(0xFFEF4444.toInt()) // Red accent color for urgency / Duolingo style
+            .setColorized(urgency == "PANIC_30M" || urgency == "URGENT_2H")
+
+        // Duolingo Live Countdown Chronometer Feature
+        if (targetTimestampMs > System.currentTimeMillis()) {
+            builder.setWhen(targetTimestampMs)
+            builder.setShowWhen(true)
+            builder.setUsesChronometer(true)
+            builder.setChronometerCountDown(true)
+        }
+
+        val notification = builder.build()
 
         try {
             NotificationManagerCompat.from(context).notify(ruleSlug.hashCode(), notification)
         } catch (_: SecurityException) {
             // Android 13+ permission not granted
         }
+    }
+
+    /**
+     * Behavioral Contrast / Counter-Habit Nudge
+     * e.g. "You listened to music for 45 mins, but did not protect your deen?"
+     */
+    fun showContrastNotification(
+        context: Context,
+        title: String,
+        body: String,
+        neglectedRuleSlug: String,
+        triggerAction: String = ""
+    ) {
+        showNotification(
+            context = context,
+            title = title,
+            body = body,
+            ruleSlug = neglectedRuleSlug,
+            urgency = "BEHAVIORAL_CONTRAST"
+        )
     }
 
     /**
@@ -103,18 +135,20 @@ object StreakNotificationManager {
 
         val hoursLeft = secondsLeft / 3600.0
 
+        val targetExpiryMs = System.currentTimeMillis() + (secondsLeft * 1000L)
+
         if (secondsLeft <= 1800) { // 30 minutes left
             val (t, b) = when (tone) {
                 "CONSCIOUS" -> "🚨 Final 30 Minutes" to "30 minutes remain to preserve your $streak-day commitment to $ruleName."
                 else -> "🚨 30 MINUTES LEFT. CODE RED." to "Say goodbye to your $streak days in 30 minutes unless you open the app RIGHT NOW."
             }
-            showNotification(context, t, b, ruleSlug, "PANIC_30M")
+            showNotification(context, t, b, ruleSlug, "PANIC_30M", targetExpiryMs)
         } else if (hoursLeft <= 2.0) { // 2 hours left
             val (t, b) = when (tone) {
                 "CONSCIOUS" -> "⏳ 2 Hours Left Today" to "Protect your $streak-day conscious habit before midnight."
                 else -> "⚠️ CARDIAC ARREST: $streak Days in Danger!" to "Your streak flatlines in under 2 hours. Don't throw away $streak days of dedication!"
             }
-            showNotification(context, t, b, ruleSlug, "URGENT_2H")
+            showNotification(context, t, b, ruleSlug, "URGENT_2H", targetExpiryMs)
         }
     }
 }

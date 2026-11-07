@@ -72,9 +72,20 @@ object DashboardStatsManager {
             else -> "CLEAN"
         }
 
-        // StreakKit drop-in: ping when clean conscious track is listened
+        // StreakKit Duolingo-in-a-Box drop-in:
+        // 1. Clean track -> advance streak + award +10 Daily XP
+        // 2. Flagged track not skipped -> consume 1 Heart + evaluate Behavioral Contrast Nudge
         if (!isFlagged && !isSkipped) {
             com.streakkit.StreakKit.ping(context, "hujjify_playback", value = 1)
+            com.streakkit.StreakKit.addXp(amount = 10, unitId = "unit_1")
+        } else if (isFlagged && !isSkipped) {
+            com.streakkit.StreakKit.consumeHeart(count = 1)
+            com.streakkit.StreakKit.evaluateContrastNudge(
+                context = context,
+                neglectedRuleSlug = "hujjify_playback",
+                triggerVerb = "listening to flagged music ($title)",
+                triggerCategory = "MEDIA_LEISURE"
+            )
         }
 
         // 3. Add to recent tracks FIFO list
