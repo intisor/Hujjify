@@ -63,6 +63,13 @@ class MainActivity : AppCompatActivity() {
         )
         com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
         com.streakkit.StreakKit.ping(this, "hujjify_playback", value = 0)
+        com.streakkit.StreakNotificationManager.createNotificationChannel(this)
+
+        // If launched via Home Screen Widget or Urgent Notification, immediately open Streak Modal
+        if (intent?.getBooleanExtra("OPEN_STREAKKIT_EMBED", false) == true) {
+            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+        }
+
         setupUI()
         handleRedirectIntent(intent)
         startUiPolling()
@@ -77,6 +84,9 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleRedirectIntent(intent)
+        if (intent.getBooleanExtra("OPEN_STREAKKIT_EMBED", false)) {
+            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+        }
     }
 
     private fun handleRedirectIntent(intent: Intent?) {

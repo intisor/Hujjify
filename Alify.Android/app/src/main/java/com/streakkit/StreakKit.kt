@@ -207,6 +207,36 @@ object StreakKit {
     private fun saveState(context: Context, json: JSONObject) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY_STATE, json.toString()).apply()
+
+        // 1. Auto-update all Home Screen Widgets on state change
+        try {
+            StreakWidgetProvider.updateAllWidgets(context)
+        } catch (_: Exception) {}
+
+        // 2. Evaluate and trigger local urgency alerts if expiring soon (< 2h / < 30m)
+        try {
+            val timing = json.optJSONObject("timing")
+            val secondsUntilExpiry = timing?.optLong("secondsUntilExpiry", -1L) ?: -1L
+            val prog = json.optJSONObject("todayProgress")
+            val completed = prog?.optBoolean("completed", false) ?: false
+            val currentStreak = json.optInt("currentStreak", 0)
+            val freezes = json.optJSONObject("freezes")?.optInt("available", 0) ?: 0
+            val ruleSlug = json.optString("ruleSlug", "streak")
+            val ruleName = configuredRules[ruleSlug]?.name ?: ruleSlug
+
+            if (secondsUntilExpiry in 1..7200 && !completed) {
+                StreakNotificationManager.checkAndAlertIfUrgent(
+                    context = context,
+                    ruleName = ruleName,
+                    ruleSlug = ruleSlug,
+                    streak = currentStreak,
+                    secondsLeft = secondsUntilExpiry,
+                    completedToday = completed,
+                    freezes = freezes,
+                    tone = "UNHINGED"
+                )
+            }
+        } catch (_: Exception) {}
     }
 
     private fun enqueueOffline(context: Context, payload: JSONObject) {
