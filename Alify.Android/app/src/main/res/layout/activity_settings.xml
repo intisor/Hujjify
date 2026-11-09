@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="12dp">
 
         <!-- Top Header Bar -->
         <LinearLayout
@@ -18,12 +18,12 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="8dp">
 
             <ImageButton
                 android:id="@+id/btnBack"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Back"
                 android:src="@drawable/ic_arrow_back"
@@ -36,36 +36,29 @@
                 android:layout_weight="1"
                 android:text="Settings &amp; Credentials"
                 android:textColor="@color/spotify_light_text"
-                android:textSize="20sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveTop"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="36dp"
                 android:text="Save"
                 android:textColor="@color/spotify_green"
+                android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Section 1: Spotify Developer BYOK -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="1. Spotify Developer Client ID (BYOK)"
-            android:textColor="@color/spotify_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
+        <!-- Section 1: Spotify Developer Connection (BYOK) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="8dp"
             app:cardBackgroundColor="@color/spotify_dark_card"
-            app:cardCornerRadius="12dp"
-            app:contentPadding="16dp">
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -73,55 +66,70 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:lineSpacingExtra="3dp"
-                    android:text="Why is this needed? Spotify limits testing apps to 25 accounts. Using your own personal Developer Client ID gives you unlimited, unrestricted playback monitoring with zero whitelist caps."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="13sp" />
-
-                <!-- 1-Tap Auto-Link Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAutoLinkSettings"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
-                    android:backgroundTint="@color/spotify_green"
-                    android:text="⚡ 1-Tap Auto-Create &amp; Link App"
-                    android:textColor="@color/spotify_black"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="8dp" />
-
-                <!-- Step 1 Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnOpenSpotifyDashboard"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
-                    android:text="1. Open Spotify Dashboard ↗"
-                    android:textColor="@color/spotify_light_text"
-                    app:strokeColor="@color/spotify_sub_text" />
-
-                <!-- Step 2 Copy URI Box -->
-                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="2. Add this Redirect URI in your app settings:"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="13sp" />
+                    android:text="⚡ 1. Spotify Connection (BYOK)"
+                    android:textColor="@color/spotify_green"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Use your personal Developer Client ID for unlimited, unthrottled monitoring."
+                    android:textColor="@color/spotify_sub_text"
+                    android:textSize="11sp" />
+
+                <!-- 1-Tap Auto-Link & Dashboard Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:background="@color/spotify_black"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAutoLinkSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:backgroundTint="@color/spotify_green"
+                        android:text="⚡ 1-Tap Auto-Link"
+                        android:textColor="@color/spotify_black"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenSpotifyDashboard"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Dashboard ↗"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="11sp"
+                        app:cornerRadius="6dp"
+                        app:strokeColor="@color/spotify_sub_text" />
+                </LinearLayout>
+
+                <!-- Redirect URI Box -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/stat_box_background"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp">
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Redirect URI: "
+                        android:textColor="@color/spotify_sub_text"
+                        android:textSize="11sp" />
 
                     <TextView
                         android:id="@+id/tvRedirectUri"
@@ -131,39 +139,32 @@
                         android:fontFamily="monospace"
                         android:text="hujjify://callback"
                         android:textColor="@color/spotify_green"
-                        android:textSize="14sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <ImageButton
                         android:id="@+id/btnCopyRedirectUri"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Copy URI"
+                        android:padding="6dp"
                         android:src="@drawable/ic_copy"
                         app:tint="@color/spotify_light_text" />
                 </LinearLayout>
 
-                <!-- Step 3 Input Client ID -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="3. Paste your Client ID:"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="13sp" />
-
+                <!-- Input Client ID -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilSpotifyClientId"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:hint="Spotify Client ID"
+                    android:layout_marginTop="8dp"
+                    android:hint="Paste Spotify Client ID"
                     app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="8dp"
-                    app:boxCornerRadiusBottomStart="8dp"
-                    app:boxCornerRadiusTopEnd="8dp"
-                    app:boxCornerRadiusTopStart="8dp"
+                    app:boxCornerRadiusBottomEnd="6dp"
+                    app:boxCornerRadiusBottomStart="6dp"
+                    app:boxCornerRadiusTopEnd="6dp"
+                    app:boxCornerRadiusTopStart="6dp"
                     app:boxStrokeColor="@color/spotify_green"
                     app:endIconMode="clear_text"
                     app:hintTextColor="@color/spotify_sub_text">
@@ -173,218 +174,138 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textNoSuggestions"
+                        android:paddingVertical="8dp"
                         android:textColor="@color/spotify_light_text"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section 2: AI Semantic Analysis Engine -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="2. AI Semantic Engine (BYOK)"
-            android:textColor="@color/spotify_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
+        <!-- Section 2: Ethos Worldview & Guardrails -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="8dp"
             app:cardBackgroundColor="@color/spotify_dark_card"
-            app:cardCornerRadius="12dp"
-            app:contentPadding="16dp">
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbEnableAi"
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:checked="true"
-                    android:text="Enable AI semantic scanning"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:lineSpacingExtra="3dp"
-                    android:text="De-cloaks coded slang, Yoruba/Pidgin double entendres, and suggestive subtext that keyword filters miss."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
-                <!-- AI Vibe-Swap Checkbox -->
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbEnableVibeSwap"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:checked="true"
-                    android:text="⚡ AI Vibe-Swap (Auto-replace flagged songs)"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:lineSpacingExtra="3dp"
-                    android:text="Instead of stopping the music, AI dynamically queries for clean sister tracks matching the same genre, beat, and vibe, and injects them into your Spotify queue."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
-                <!-- API Key Input -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilAiApiKey"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="AI API Key (Gemini, OpenRouter, Groq)"
-                    app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="8dp"
-                    app:boxCornerRadiusBottomStart="8dp"
-                    app:boxCornerRadiusTopEnd="8dp"
-                    app:boxCornerRadiusTopStart="8dp"
-                    app:boxStrokeColor="@color/spotify_green"
-                    app:endIconMode="password_toggle"
-                    app:helperText="Supports Gemini (AIza... / AQ....), OpenRouter (sk-...), Groq (gsk_...)"
-                    app:helperTextTextColor="@color/spotify_sub_text"
-                    app:hintTextColor="@color/spotify_sub_text">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etAiApiKey"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword"
-                        android:textColor="@color/spotify_light_text"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Engine Mode Selection -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="ANALYSIS ENGINE MODE"
+                    android:text="🛡️ 2. Ethos Guardrails &amp; Interventions"
                     android:textColor="@color/spotify_green"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <Spinner
-                    android:id="@+id/spAnalysisMode"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@android:drawable/btn_dropdown" />
-
-                <TextView
-                    android:id="@+id/tvAnalysisModeHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="AI Semantic Engine is authoritative; regex runs only as offline fallback."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp" />
-
-                <!-- Free Key Helper Links -->
+                <!-- Ethos Profile Selector -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical">
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGetGeminiKey"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                    <TextView
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:padding="0dp"
-                        android:text="Get Free Google Gemini Key (AI Studio) ↗"
-                        android:textColor="@color/accent_blue"
-                        android:textSize="12sp" />
+                        android:layout_height="wrap_content"
+                        android:text="Ethos Profile:"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGetGroqKey"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="wrap_content"
+                    <Spinner
+                        android:id="@+id/spProfileSettings"
+                        android:layout_width="0dp"
                         android:layout_height="36dp"
-                        android:padding="0dp"
-                        android:text="Get Free Groq Key (Fast Llama 3.3) ↗"
-                        android:textColor="@color/accent_blue"
-                        android:textSize="12sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGetOpenRouterKey"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:padding="0dp"
-                        android:text="Get Free OpenRouter Key ↗"
-                        android:textColor="@color/accent_blue"
-                        android:textSize="12sp" />
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="@android:drawable/btn_dropdown" />
                 </LinearLayout>
 
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                <!-- Strictness Level Slider -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-        <!-- Section 3: Ethos & Worldview Filter -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="3. Ethos &amp; Strictness Filter"
-            android:textColor="@color/spotify_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/tvStrictnessLabelSettings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Strictness: 10/10"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="12sp" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="@color/spotify_dark_card"
-            app:cardCornerRadius="12dp"
-            app:contentPadding="16dp">
+                    <SeekBar
+                        android:id="@+id/sbStrictnessSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:max="10"
+                        android:min="1"
+                        android:progress="10" />
+                </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+                <!-- Checkboxes Group (Compact) -->
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cbEnableVibeSwap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginTop="4dp"
+                    android:checked="true"
+                    android:text="⚡ AI Vibe-Swap (Auto-replace flagged songs)"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="12sp" />
 
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cbEnableSurgicalDucking"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:checked="true"
+                    android:text="🎧 Radio Edit (Surgical word ducking on isolated flags)"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cbExplicitSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:checked="false"
+                    android:text="🚫 Strict Metadata: Skip Spotify [E] Explicit tags"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="12sp" />
+
+                <!-- Compact Natural Language Directive -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="💬 Chat-to-Filter (Natural Language Intent)"
-                    android:textColor="@color/spotify_green"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="Describe what you want or don't want to hear. The AI will enforce your exact boundaries."
+                    android:layout_marginTop="6dp"
+                    android:text="Custom Ethos Directive:"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
+                    android:textSize="11sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilCustomEthosPrompt"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Tell Hujjify what to allow or skip..."
+                    android:layout_marginTop="2dp"
+                    android:hint="e.g. 'Allow romance, block drill and clubs'..."
                     app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="8dp"
-                    app:boxCornerRadiusBottomStart="8dp"
-                    app:boxCornerRadiusTopEnd="8dp"
-                    app:boxCornerRadiusTopStart="8dp"
+                    app:boxCornerRadiusBottomEnd="6dp"
+                    app:boxCornerRadiusBottomStart="6dp"
+                    app:boxCornerRadiusTopEnd="6dp"
+                    app:boxCornerRadiusTopStart="6dp"
                     app:boxStrokeColor="@color/spotify_green"
                     app:hintTextColor="@color/spotify_sub_text">
 
@@ -392,232 +313,324 @@
                         android:id="@+id/etCustomEthosPrompt"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="top|start"
-                        android:inputType="textMultiLine|textCapSentences"
-                        android:lines="3"
-                        android:maxLines="6"
+                        android:inputType="textCapSentences"
+                        android:maxLines="2"
+                        android:paddingVertical="8dp"
                         android:textColor="@color/spotify_light_text"
-                        android:textSize="13sp" />
+                        android:textSize="12sp" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="Ethos Worldview Profile"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <Spinner
-                    android:id="@+id/spProfileSettings"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="6dp"
-                    android:background="@android:drawable/btn_dropdown" />
-
-                <TextView
-                    android:id="@+id/tvStrictnessLabelSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="Strictness Level: 10 / 10"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp" />
-
-                <SeekBar
-                    android:id="@+id/sbStrictnessSettings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:max="10"
-                    android:min="1"
-                    android:progress="10" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbExplicitSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:checked="false"
-                    android:text="Skip Spotify Explicit [E] tracks"
-                    android:textColor="@color/spotify_light_text" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section 4: Persistent Credential Vault & Backup -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="4. Persistent Credential Vault"
-            android:textColor="@color/spotify_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
+        <!-- Section 3: AI Semantic Engine & API Keys (BYOK) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="8dp"
             app:cardBackgroundColor="@color/spotify_dark_card"
-            app:cardCornerRadius="12dp"
-            app:contentPadding="16dp">
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🛡️ Device-Independent Backup"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🧠 3. AI Semantic Engine (BYOK)"
+                        android:textColor="@color/spotify_green"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbEnableAi"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:checked="true"
+                        android:text="Enabled"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- API Key Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilAiApiKey"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Saves your Spotify tokens, Gemini API keys, and custom filter prompt to persistent storage so nothing is lost if you delete or update the app from GitHub."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
+                    android:hint="AI Key (Gemini AIza..., Groq gsk_..., OpenRouter sk-...)"
+                    app:boxBackgroundColor="@color/spotify_black"
+                    app:boxCornerRadiusBottomEnd="6dp"
+                    app:boxCornerRadiusBottomStart="6dp"
+                    app:boxCornerRadiusTopEnd="6dp"
+                    app:boxCornerRadiusTopStart="6dp"
+                    app:boxStrokeColor="@color/spotify_green"
+                    app:endIconMode="password_toggle"
+                    app:hintTextColor="@color/spotify_sub_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etAiApiKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:paddingVertical="8dp"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Engine Mode Selection -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Engine Mode:"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spAnalysisMode"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="@android:drawable/btn_dropdown" />
+                </LinearLayout>
 
                 <TextView
-                    android:id="@+id/tvVaultStatus"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tvAnalysisModeHint"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Status: Checking vault..."
-                    android:textColor="@color/spotify_green"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="2dp"
+                    android:text="AI Semantic Engine is authoritative; regex runs only as offline fallback."
+                    android:textColor="@color/spotify_sub_text"
+                    android:textSize="10sp" />
+
+                <!-- Free Key Helper Links in a Single Horizontal Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Get Key: "
+                        android:textColor="@color/spotify_sub_text"
+                        android:textSize="11sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGetGeminiKey"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:paddingHorizontal="4dp"
+                        android:text="Gemini ↗"
+                        android:textColor="@color/accent_blue"
+                        android:textSize="11sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGetGroqKey"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:paddingHorizontal="4dp"
+                        android:text="Groq ↗"
+                        android:textColor="@color/accent_blue"
+                        android:textSize="11sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnGetOpenRouterKey"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:paddingHorizontal="4dp"
+                        android:text="OpenRouter ↗"
+                        android:textColor="@color/accent_blue"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Section 4: Persistent Credential Vault & Backup -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardBackgroundColor="@color/spotify_dark_card"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="💾 4. Persistent Vault (Backup)"
+                        android:textColor="@color/spotify_green"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvVaultStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Checking..."
+                        android:textColor="@color/spotify_green"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBackupVault"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="4dp"
                         android:layout_weight="1"
                         android:text="💾 Backup"
                         android:textColor="@color/spotify_light_text"
+                        android:textSize="11sp"
+                        app:cornerRadius="6dp"
                         app:strokeColor="@color/spotify_green" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnRestoreVault"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="6dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
                         android:layout_weight="1"
                         android:text="📥 Restore"
                         android:textColor="@color/spotify_light_text"
+                        android:textSize="11sp"
+                        app:cornerRadius="6dp"
                         app:strokeColor="@color/spotify_green" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnExportVault"
                         style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:text="📤 Export / Share"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Export"
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnImportVault"
                         style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:text="📂 Import File"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Import"
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Section 5: App Version & Updates -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="5. App Version &amp; Updates"
-            android:textColor="@color/spotify_green"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="12dp"
             app:cardBackgroundColor="@color/spotify_dark_card"
-            app:cardCornerRadius="12dp"
-            app:contentPadding="16dp">
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tvAppVersion"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Installed Version: v1.3.0"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Open-source music stance filter &amp; lyric auditor."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
+                    <TextView
+                        android:id="@+id/tvAppVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Installed: v1.9.2"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Conscious music sentinel &amp; DJ"
+                        android:textColor="@color/spotify_sub_text"
+                        android:textSize="10sp" />
+                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCheckUpdates"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="12dp"
-                    android:text="🔄 Check for Updates on GitHub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="🔄 Check Updates"
                     android:textColor="@color/spotify_light_text"
+                    android:textSize="11sp"
+                    app:cornerRadius="6dp"
                     app:strokeColor="@color/spotify_green" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Save Button -->
+        <!-- Bottom Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveSettings"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginBottom="24dp"
+            android:layout_height="44dp"
+            android:layout_marginBottom="16dp"
             android:backgroundTint="@color/spotify_green"
             android:text="Save Settings"
             android:textColor="@color/spotify_black"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold"
-            app:cornerRadius="28dp" />
+            app:cornerRadius="22dp" />
 
     </LinearLayout>
 </ScrollView>
