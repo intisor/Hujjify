@@ -68,7 +68,7 @@ object AiEthosDjService {
                 return@withContext false
             }
 
-            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey, filterEngine.customModel, filterEngine.customEndpoint)
             if (rawResponse.isNullOrBlank()) {
                 onStatus("AI DJ could not generate recommendations")
                 return@withContext false

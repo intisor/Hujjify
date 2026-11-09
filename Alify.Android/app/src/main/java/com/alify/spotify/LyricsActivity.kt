@@ -515,7 +515,7 @@ class LyricsActivity : AppCompatActivity() {
                     } else {
                         var resolved: String? = null
                         for (candidateKey in keys) {
-                            val response = FilterEngine.executeLlmWaterfallRequest(prompt, candidateKey)
+                            val response = FilterEngine.executeLlmWaterfallRequest(prompt, candidateKey, filterEngine.customModel, filterEngine.customEndpoint)
                             if (!response.isNullOrBlank()) {
                                 resolved = response.trim()
                                 break

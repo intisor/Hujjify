@@ -433,9 +433,9 @@ class LrclibClient {
 
         val keysToTry = FilterEngine.buildProviderKeyWaterfall(userApiKey)
         for (apiKey in keysToTry) {
-            val result = tryFetchLyricsWithKey(prompt, apiKey)
-            if (!result.isNullOrBlank()) {
-                return result
+            val result = FilterEngine.executeLlmWaterfallRequest(prompt, apiKey)
+            if (!result.isNullOrBlank() && !result.contains("LYRICS_NOT_FOUND", ignoreCase = true) && result.length > 40) {
+                return result.trim()
             }
         }
         return null

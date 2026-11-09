@@ -74,7 +74,7 @@ object VibeSubstituteService {
                 return@withContext null
             }
 
-            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey, filterEngine.customModel, filterEngine.customEndpoint)
             if (rawResponse.isNullOrBlank()) {
                 Log.w(TAG, "Empty response from AI for vibe substitution")
                 return@withContext null

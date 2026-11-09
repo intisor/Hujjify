@@ -369,7 +369,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:hint="AI Key (Gemini AIza..., Groq gsk_..., OpenRouter sk-...)"
+                    android:hint="AI Key (OpenAI, Claude, Groq, Gemini, OpenRouter, etc.)"
                     app:boxBackgroundColor="@color/spotify_black"
                     app:boxCornerRadiusBottomEnd="6dp"
                     app:boxCornerRadiusBottomStart="6dp"
@@ -467,6 +467,84 @@
                         android:text="OpenRouter ↗"
                         android:textColor="@color/accent_blue"
                         android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Technical Settings Toggle (Non-intrusive for everyday users) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnToggleAdvancedAi"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="32dp"
+                    android:layout_marginTop="4dp"
+                    android:gravity="start|center_vertical"
+                    android:paddingHorizontal="0dp"
+                    android:text="Technical Settings (Custom Model &amp; Endpoint)"
+                    android:textColor="@color/spotify_sub_text"
+                    android:textSize="11sp" />
+
+                <!-- Collapsible Advanced Technical Section -->
+                <LinearLayout
+                    android:id="@+id/llAdvancedAiContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilAiCustomModel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Custom Model ID (e.g. gpt-4o-mini, claude-3-5-sonnet, deepseek-chat)"
+                        app:boxBackgroundColor="@color/spotify_black"
+                        app:boxCornerRadiusBottomEnd="6dp"
+                        app:boxCornerRadiusBottomStart="6dp"
+                        app:boxCornerRadiusTopEnd="6dp"
+                        app:boxCornerRadiusTopStart="6dp"
+                        app:boxStrokeColor="@color/spotify_green"
+                        app:hintTextColor="@color/spotify_sub_text">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etAiCustomModel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textNoSuggestions"
+                            android:paddingVertical="8dp"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="12sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilAiCustomEndpoint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:hint="Custom Endpoint / Base URL (Optional - OpenAI compatible)"
+                        app:boxBackgroundColor="@color/spotify_black"
+                        app:boxCornerRadiusBottomEnd="6dp"
+                        app:boxCornerRadiusBottomStart="6dp"
+                        app:boxCornerRadiusTopEnd="6dp"
+                        app:boxCornerRadiusTopStart="6dp"
+                        app:boxStrokeColor="@color/spotify_green"
+                        app:hintTextColor="@color/spotify_sub_text">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etAiCustomEndpoint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textUri"
+                            android:paddingVertical="8dp"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="12sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Supports any OpenAI-compatible API (DeepSeek, Ollama, Together), Claude, Groq, and Gemini. Leave blank for auto-configuration."
+                        android:textColor="@color/spotify_sub_text"
+                        android:textSize="10sp" />
                 </LinearLayout>
 
             </LinearLayout>

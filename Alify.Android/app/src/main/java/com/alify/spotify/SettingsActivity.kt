@@ -218,6 +218,18 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.cbEnableAi.setOnCheckedChangeListener { _, isChecked ->
             binding.tilAiApiKey.visibility = if (isChecked) View.VISIBLE else View.GONE
+            binding.btnToggleAdvancedAi.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (!isChecked) binding.llAdvancedAiContainer.visibility = View.GONE
+        }
+
+        binding.btnToggleAdvancedAi.setOnClickListener {
+            if (binding.llAdvancedAiContainer.visibility == View.VISIBLE) {
+                binding.llAdvancedAiContainer.visibility = View.GONE
+                binding.btnToggleAdvancedAi.text = "Technical Settings (Custom Model & Endpoint)"
+            } else {
+                binding.llAdvancedAiContainer.visibility = View.VISIBLE
+                binding.btnToggleAdvancedAi.text = "Technical Settings (Custom Model & Endpoint) - Expanded"
+            }
         }
     }
 
@@ -290,7 +302,20 @@ class SettingsActivity : AppCompatActivity() {
         val enableAi = filterPrefs.getBoolean("enable_gemini", true)
         binding.cbEnableAi.isChecked = enableAi
         binding.tilAiApiKey.visibility = if (enableAi) View.VISIBLE else View.GONE
+        binding.btnToggleAdvancedAi.visibility = if (enableAi) View.VISIBLE else View.GONE
         binding.etAiApiKey.setText(filterPrefs.getString("gemini_api_key", ""))
+
+        val customModel = filterPrefs.getString("ai_custom_model", "") ?: ""
+        val customEndpoint = filterPrefs.getString("ai_custom_endpoint", "") ?: ""
+        binding.etAiCustomModel.setText(customModel)
+        binding.etAiCustomEndpoint.setText(customEndpoint)
+        if (customModel.isNotBlank() || customEndpoint.isNotBlank()) {
+            binding.llAdvancedAiContainer.visibility = View.VISIBLE
+            binding.btnToggleAdvancedAi.text = "Technical Settings (Custom Model & Endpoint) - Expanded"
+        } else {
+            binding.llAdvancedAiContainer.visibility = View.GONE
+            binding.btnToggleAdvancedAi.text = "Technical Settings (Custom Model & Endpoint)"
+        }
 
         // Vibe-Swap & Surgical Ducking Settings
         binding.cbEnableVibeSwap.isChecked = filterPrefs.getBoolean("enable_vibe_swap", true)
@@ -331,6 +356,8 @@ class SettingsActivity : AppCompatActivity() {
             .putBoolean("enable_vibe_swap", binding.cbEnableVibeSwap.isChecked)
             .putBoolean("enable_surgical_ducking", binding.cbEnableSurgicalDucking.isChecked)
             .putString("gemini_api_key", binding.etAiApiKey.text?.toString()?.trim() ?: "")
+            .putString("ai_custom_model", binding.etAiCustomModel.text?.toString()?.trim() ?: "")
+            .putString("ai_custom_endpoint", binding.etAiCustomEndpoint.text?.toString()?.trim() ?: "")
             .apply()
 
         PersistentVaultManager.saveVault(this)

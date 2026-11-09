@@ -45,6 +45,8 @@ object PersistentVaultManager {
         filterObj.put("filter_explicit", filterPrefs.getBoolean("filter_explicit", false))
         filterObj.put("enable_gemini", filterPrefs.getBoolean("enable_gemini", true))
         filterObj.put("gemini_api_key", filterPrefs.getString("gemini_api_key", "") ?: "")
+        filterObj.put("ai_custom_model", filterPrefs.getString("ai_custom_model", "") ?: "")
+        filterObj.put("ai_custom_endpoint", filterPrefs.getString("ai_custom_endpoint", "") ?: "")
         root.put("filter", filterObj)
 
         return root.toString(2)
@@ -64,7 +66,9 @@ object PersistentVaultManager {
             val customPrompt = filterPrefs.getString("custom_ethos_prompt", null)
 
             // Only save if there's actual user configuration present
-            if (clientId.isNullOrBlank() && refreshToken.isNullOrBlank() && geminiKey.isNullOrBlank() && customPrompt.isNullOrBlank()) {
+            val customModel = filterPrefs.getString("ai_custom_model", null)
+            val customEndpoint = filterPrefs.getString("ai_custom_endpoint", null)
+            if (clientId.isNullOrBlank() && refreshToken.isNullOrBlank() && geminiKey.isNullOrBlank() && customPrompt.isNullOrBlank() && customModel.isNullOrBlank() && customEndpoint.isNullOrBlank()) {
                 return false
             }
 
@@ -220,6 +224,8 @@ object PersistentVaultManager {
                 if (f.has("filter_explicit")) editor.putBoolean("filter_explicit", f.optBoolean("filter_explicit", false))
                 if (f.has("enable_gemini")) editor.putBoolean("enable_gemini", f.optBoolean("enable_gemini", true))
                 if (f.has("gemini_api_key")) editor.putString("gemini_api_key", f.optString("gemini_api_key"))
+                if (f.has("ai_custom_model")) editor.putString("ai_custom_model", f.optString("ai_custom_model"))
+                if (f.has("ai_custom_endpoint")) editor.putString("ai_custom_endpoint", f.optString("ai_custom_endpoint"))
                 editor.apply()
             }
 

@@ -45,7 +45,9 @@ class FilterEngine(
     var enableGemini: Boolean = true,
     var geminiApiKey: String = "",
     var customEthosPrompt: String = "",
-    var analysisMode: AnalysisMode = AnalysisMode.AI_SEMANTIC
+    var analysisMode: AnalysisMode = AnalysisMode.AI_SEMANTIC,
+    var customModel: String = "",
+    var customEndpoint: String = ""
 ) {
     companion object {
         private const val TAG = "FilterEngine"
@@ -95,6 +97,8 @@ class FilterEngine(
             val customPrompt = prefs.getString("custom_ethos_prompt", "") ?: ""
             val modeOrdinal = prefs.getInt("analysis_mode", AnalysisMode.AI_SEMANTIC.ordinal)
             val analysisMode = AnalysisMode.values().getOrElse(modeOrdinal) { AnalysisMode.AI_SEMANTIC }
+            val customModel = prefs.getString("ai_custom_model", "") ?: ""
+            val customEndpoint = prefs.getString("ai_custom_endpoint", "") ?: ""
 
             return FilterEngine(
                 profile = profile,
@@ -103,7 +107,9 @@ class FilterEngine(
                 enableGemini = enableGemini,
                 geminiApiKey = geminiKey,
                 customEthosPrompt = customPrompt,
-                analysisMode = analysisMode
+                analysisMode = analysisMode,
+                customModel = customModel,
+                customEndpoint = customEndpoint
             )
         }
 
@@ -112,117 +118,250 @@ class FilterEngine(
             .readTimeout(8, TimeUnit.SECONDS)
             .build()
 
-        fun executeLlmWaterfallRequest(prompt: String, apiKey: String): String? {
-            val isGroq = apiKey.startsWith("gsk_")
-            val isOpenRouter = apiKey.startsWith("sk-")
-
-            if (isGroq || isOpenRouter) {
-                val url = if (isGroq) {
-                    "https://api.groq.com/openai/v1/chat/completions"
-                } else {
-                    "https://openrouter.ai/api/v1/chat/completions"
+        fun executeOpenAiCompatibleRequest(
+            url: String,
+            apiKey: String,
+            model: String,
+            prompt: String
+        ): String? {
+            return try {
+                val payload = JSONObject().apply {
+                    put("model", model)
+                    put("messages", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("role", "user")
+                            put("content", prompt)
+                        })
+                    })
+                    put("temperature", 0.1)
                 }
-                val models = if (isGroq) {
-                    // High-speed production Groq models (~300-600ms latency)
+
+                val reqBuilder = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Hujjify-Android/1.4")
+                    .header("HTTP-Referer", "https://github.com/intisor/Alify")
+                    .header("X-Title", "Hujjify Music Filter")
+
+                if (apiKey.isNotBlank()) {
+                    reqBuilder.header("Authorization", "Bearer $apiKey")
+                }
+
+                val request = reqBuilder
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "OpenAI-compatible $url ($model) returned HTTP ${response.code}")
+                        return null
+                    }
+                    val body = response.body?.string() ?: return null
+                    val root = JSONObject(body)
+
+                    val choices = root.optJSONArray("choices")
+                    if (choices != null && choices.length() > 0) {
+                        val content = choices.getJSONObject(0).optJSONObject("message")?.optString("content")
+                        if (!content.isNullOrBlank()) return content
+                    }
+
+                    val contentArr = root.optJSONArray("content")
+                    if (contentArr != null && contentArr.length() > 0) {
+                        val text = contentArr.getJSONObject(0).optString("text")
+                        if (text.isNotBlank()) return text
+                    }
+
+                    val rawResp = root.optString("response")
+                    if (rawResp.isNotBlank()) return rawResp
+
+                    null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error calling OpenAI-compatible $url ($model): ${e.message}")
+                null
+            }
+        }
+
+        fun executeAnthropicRequest(
+            url: String,
+            apiKey: String,
+            model: String,
+            prompt: String
+        ): String? {
+            return try {
+                val payload = JSONObject().apply {
+                    put("model", model)
+                    put("max_tokens", 1024)
+                    put("temperature", 0.1)
+                    put("messages", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("role", "user")
+                            put("content", prompt)
+                        })
+                    })
+                }
+
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", "2023-06-01")
+                    .header("content-type", "application/json")
+                    .header("User-Agent", "Hujjify-Android/1.4")
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "Anthropic $model returned HTTP ${response.code}")
+                        return null
+                    }
+                    val body = response.body?.string() ?: return null
+                    val root = JSONObject(body)
+                    val contentArr = root.optJSONArray("content")
+                    if (contentArr != null && contentArr.length() > 0) {
+                        for (i in 0 until contentArr.length()) {
+                            val part = contentArr.getJSONObject(i)
+                            val text = part.optString("text")
+                            if (text.isNotBlank()) return text
+                        }
+                    }
+                    null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error calling Anthropic $model: ${e.message}")
+                null
+            }
+        }
+
+        fun executeGeminiRequest(
+            model: String,
+            apiKey: String,
+            prompt: String
+        ): String? {
+            return try {
+                val jsonPayload = JSONObject().apply {
+                    put("contents", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("parts", JSONArray().apply {
+                                put(JSONObject().apply {
+                                    put("text", prompt)
+                                })
+                            })
+                        })
+                    })
+                }
+
+                val request = Request.Builder()
+                    .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                    .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "Gemini $model returned HTTP ${response.code}")
+                        return null
+                    }
+                    val body = response.body?.string() ?: return null
+                    val root = JSONObject(body)
+                    val candidates = root.optJSONArray("candidates") ?: return null
+                    if (candidates.length() > 0) {
+                        val text = candidates.getJSONObject(0)
+                            .optJSONObject("content")
+                            ?.optJSONArray("parts")
+                            ?.optJSONObject(0)
+                            ?.optString("text")
+                        if (!text.isNullOrBlank()) {
+                            return text
+                        }
+                    }
+                    null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error calling Gemini $model: ${e.message}")
+                null
+            }
+        }
+
+        fun executeLlmWaterfallRequest(
+            prompt: String,
+            apiKey: String,
+            customModel: String? = null,
+            customEndpoint: String? = null
+        ): String? {
+            val cleanKey = apiKey.trim()
+            val cleanEndpoint = customEndpoint?.trim() ?: ""
+            val cleanModel = customModel?.trim() ?: ""
+
+            // 1. Custom Endpoint Specified (Technical Users: DeepSeek, Together, Ollama, custom proxy)
+            if (cleanEndpoint.isNotEmpty()) {
+                val model = cleanModel.ifEmpty { "default" }
+                return executeOpenAiCompatibleRequest(cleanEndpoint, cleanKey, model, prompt)
+            }
+
+            // 2. Anthropic / Claude Key (sk-ant-...)
+            if (cleanKey.startsWith("sk-ant-")) {
+                val models = if (cleanModel.isNotEmpty()) {
+                    listOf(cleanModel)
+                } else {
+                    listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-haiku-20240307")
+                }
+                for (model in models) {
+                    val res = executeAnthropicRequest("https://api.anthropic.com/v1/messages", cleanKey, model, prompt)
+                    if (!res.isNullOrBlank()) return res
+                }
+                return null
+            }
+
+            // 3. Groq Key (gsk_...)
+            if (cleanKey.startsWith("gsk_")) {
+                val models = if (cleanModel.isNotEmpty()) {
+                    listOf(cleanModel)
+                } else {
                     listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+                }
+                for (model in models) {
+                    val res = executeOpenAiCompatibleRequest("https://api.groq.com/openai/v1/chat/completions", cleanKey, model, prompt)
+                    if (!res.isNullOrBlank()) return res
+                }
+                return null
+            }
+
+            // 4. OpenRouter Key (sk-or-...)
+            if (cleanKey.startsWith("sk-or-")) {
+                val models = if (cleanModel.isNotEmpty()) {
+                    listOf(cleanModel)
                 } else {
-                    listOf("openrouter/free")
+                    listOf("meta-llama/llama-3.3-70b-instruct:free", "openrouter/free")
                 }
-
                 for (model in models) {
-                    try {
-                        val payload = JSONObject().apply {
-                            put("model", model)
-                            put("messages", JSONArray().apply {
-                                put(JSONObject().apply {
-                                    put("role", "user")
-                                    put("content", prompt)
-                                })
-                            })
-                            put("temperature", 0.1)
-                        }
-
-                        val request = Request.Builder()
-                            .url(url)
-                            .header("Authorization", "Bearer $apiKey")
-                            .header("User-Agent", "Hujjify-Android/1.4")
-                            .header("HTTP-Referer", "https://github.com/intisor/Alify")
-                            .header("X-Title", "Hujjify Music Filter")
-                            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                            .build()
-
-                        httpClient.newCall(request).execute().use { response ->
-                            if (!response.isSuccessful) {
-                                Log.w(TAG, "Provider $model returned HTTP ${response.code}")
-                                if (response.code == 429) {
-                                    // Key rate-limited: exit early to let competing parallel provider win immediately
-                                    return null
-                                }
-                                return@use
-                            }
-                            val body = response.body?.string() ?: return@use
-                            val root = JSONObject(body)
-                            val choices = root.optJSONArray("choices") ?: return@use
-                            if (choices.length() > 0) {
-                                val content = choices.getJSONObject(0).optJSONObject("message")?.optString("content")
-                                if (!content.isNullOrBlank()) {
-                                    return content
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error calling $model: ${e.message}")
-                    }
+                    val res = executeOpenAiCompatibleRequest("https://openrouter.ai/api/v1/chat/completions", cleanKey, model, prompt)
+                    if (!res.isNullOrBlank()) return res
                 }
+                return null
+            }
+
+            // 5. Standard OpenAI Key (sk-proj-... or sk-...)
+            if (cleanKey.startsWith("sk-")) {
+                val models = if (cleanModel.isNotEmpty()) {
+                    listOf(cleanModel)
+                } else {
+                    listOf("gpt-4o-mini", "gpt-4o")
+                }
+                for (model in models) {
+                    val res = executeOpenAiCompatibleRequest("https://api.openai.com/v1/chat/completions", cleanKey, model, prompt)
+                    if (!res.isNullOrBlank()) return res
+                }
+                return null
+            }
+
+            // 6. Google Gemini Key (AIza... or default fallback)
+            val geminiModels = if (cleanModel.isNotEmpty()) {
+                listOf(cleanModel)
             } else {
-                // Google Gemini active production models
-                val models = listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
-                for (model in models) {
-                    try {
-                        val jsonPayload = JSONObject().apply {
-                            put("contents", JSONArray().apply {
-                                put(JSONObject().apply {
-                                    put("parts", JSONArray().apply {
-                                        put(JSONObject().apply {
-                                            put("text", prompt)
-                                        })
-                                    })
-                                })
-                            })
-                        }
-
-                        val request = Request.Builder()
-                            .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
-                            .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
-                            .build()
-
-                        httpClient.newCall(request).execute().use { response ->
-                            if (!response.isSuccessful) {
-                                Log.w(TAG, "Gemini $model returned HTTP ${response.code}")
-                                if (response.code == 429) {
-                                    // Key rate-limited: exit early to let competing parallel provider win immediately
-                                    return null
-                                }
-                                return@use
-                            }
-                            val body = response.body?.string() ?: return@use
-                            val root = JSONObject(body)
-                            val candidates = root.optJSONArray("candidates") ?: return@use
-                            if (candidates.length() > 0) {
-                                val text = candidates.getJSONObject(0)
-                                    .optJSONObject("content")
-                                    ?.optJSONArray("parts")
-                                    ?.optJSONObject(0)
-                                    ?.optString("text")
-                                if (!text.isNullOrBlank()) {
-                                    return text
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error calling Gemini $model: ${e.message}")
-                    }
-                }
+                listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
+            }
+            for (model in geminiModels) {
+                val res = executeGeminiRequest(model, cleanKey, prompt)
+                if (!res.isNullOrBlank()) return res
             }
 
             return null
@@ -341,12 +480,24 @@ class FilterEngine(
             }
         """.trimIndent()
 
+        val userKey = geminiApiKey.trim()
+        val hasCustomConfig = userKey.isNotEmpty() || customEndpoint.isNotBlank() || customModel.isNotBlank()
+
+        // 1. Direct priority: If user configured a custom key, endpoint, or model, execute with user's settings first
+        if (hasCustomConfig && userKey.isNotEmpty()) {
+            val userRaw = executeLlmWaterfallRequest(prompt, userKey, customModel, customEndpoint)
+            if (userRaw != null) {
+                val parsed = parseLlmResponse(userRaw, trackName, artistName)
+                if (parsed != null) return@withContext parsed
+            }
+        }
+
         val keysWaterfall = buildProviderKeyWaterfall(geminiApiKey)
 
         // Identify primary Groq and Gemini candidate keys
         val groqKey = keysWaterfall.firstOrNull { it.startsWith("gsk_") }
             ?: decodeKey(GROQ_FALLBACK_ENC)
-        val geminiKey = keysWaterfall.firstOrNull { !it.startsWith("gsk_") && !it.startsWith("sk-") }
+        val geminiKey = keysWaterfall.firstOrNull { !it.startsWith("gsk_") && !it.startsWith("sk-") && !it.startsWith("sk-ant-") }
             ?: decodeKey(GEMINI_FALLBACK_ENC)
 
         // Speculative Parallel Race: Launch Groq (ultra-fast ~0.8s) and Gemini (~1.2s) concurrently.
@@ -356,7 +507,7 @@ class FilterEngine(
             val j1 = launch(Dispatchers.IO) {
                 try {
                     if (groqKey.isNotBlank()) {
-                        val raw = executeLlmWaterfallRequest(prompt, groqKey)
+                        val raw = executeLlmWaterfallRequest(prompt, groqKey, customModel, customEndpoint)
                         if (raw != null) {
                             parseLlmResponse(raw, trackName, artistName)?.let { channel.trySend(it) }
                         }
@@ -366,7 +517,7 @@ class FilterEngine(
             val j2 = launch(Dispatchers.IO) {
                 try {
                     if (geminiKey.isNotBlank()) {
-                        val raw = executeLlmWaterfallRequest(prompt, geminiKey)
+                        val raw = executeLlmWaterfallRequest(prompt, geminiKey, customModel, customEndpoint)
                         if (raw != null) {
                             parseLlmResponse(raw, trackName, artistName)?.let { channel.trySend(it) }
                         }
@@ -387,10 +538,10 @@ class FilterEngine(
             return@withContext fastParallelResult
         }
 
-        // Secondary fallback: Try remaining waterfall keys sequentially (e.g. OpenRouter)
+        // Secondary fallback: Try remaining waterfall keys sequentially (e.g. OpenRouter, OpenAI)
         for (fallbackKey in keysWaterfall) {
-            if (fallbackKey == groqKey || fallbackKey == geminiKey) continue
-            val rawResponse = executeLlmWaterfallRequest(prompt, fallbackKey) ?: continue
+            if (fallbackKey == groqKey || fallbackKey == geminiKey || fallbackKey == userKey) continue
+            val rawResponse = executeLlmWaterfallRequest(prompt, fallbackKey, customModel, customEndpoint) ?: continue
             val parsedRes = parseLlmResponse(rawResponse, trackName, artistName)
             if (parsedRes != null) return@withContext parsedRes
         }
