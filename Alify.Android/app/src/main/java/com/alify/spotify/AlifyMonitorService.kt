@@ -41,6 +41,12 @@ class AlifyMonitorService : Service() {
 
     private var lastTrackId: String? = null
     private var lastRecordedTrackId: String? = null
+    private var currentPlaybackProgressMs: Long = 0L
+    private var progressTimestamp: Long = 0L
+
+    private fun getCurrentPositionMs(): Long {
+        return currentPlaybackProgressMs + (System.currentTimeMillis() - progressTimestamp)
+    }
 
     companion object {
         private const val TAG = "AlifyMonitorService"
@@ -156,6 +162,9 @@ class AlifyMonitorService : Service() {
             val isPlaying = json.optBoolean("is_playing", false)
             if (!isPlaying) return
 
+            currentPlaybackProgressMs = json.optLong("progress_ms", 0L)
+            progressTimestamp = System.currentTimeMillis()
+
             val item = json.optJSONObject("item") ?: return
             val trackId = item.optString("id")
             val trackName = item.optString("name")
@@ -256,10 +265,33 @@ class AlifyMonitorService : Service() {
             }
 
             if (result.isFlagged) {
+                val syncedLrc = lrclibClient.lastRawSyncedLyrics
+                val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
+                val enableSurgicalDucking = filterPrefs.getBoolean("enable_surgical_ducking", true)
+
+                // Surgical Synced Ducking (Radio Edit Mode):
+                // If song only has 1 or 2 flagged lines and synced lyrics exist, duck the specific words instead of skipping!
+                if (enableSurgicalDucking && !syncedLrc.isNullOrBlank() && result.flaggedLines.size in 1..2) {
+                    val intervals = SurgicalDuckingManager.calculateDuckIntervals(syncedLrc, result.flaggedLines)
+                    if (intervals.isNotEmpty()) {
+                        isLastFlagged = false
+                        lastStatusBadge = "🎧 Radio Edit: Ducking ${intervals.size} flagged words"
+                        updateNotification("Radio Edit: Ducking words in $trackName")
+                        SurgicalDuckingManager.scheduleSurgicalDucking(
+                            context = this@AlifyMonitorService,
+                            scope = scope,
+                            intervals = intervals,
+                            getCurrentPositionMs = { getCurrentPositionMs() }
+                        )
+                        return
+                    }
+                }
+
+                SurgicalDuckingManager.stop()
                 isLastFlagged = true
                 lastStatusBadge = "✕ Flagged: ${result.flagReason}"
                 updateNotification("Skipping: $trackName (${result.flagReason})")
-                skipTrack(token)
+                handleFlaggedTrack(trackName, artistName, result.flagReason ?: "Flagged", token)
             } else {
                 isLastFlagged = false
                 lastStatusBadge = when {
@@ -358,7 +390,7 @@ class AlifyMonitorService : Service() {
                             isLastFlagged = true
                             lastStatusBadge = "✕ Flagged: ${newResult.flagReason}"
                             updateNotification("Skipping: $trackName (${newResult.flagReason})")
-                            skipTrack(token)
+                            handleFlaggedTrack(trackName, artistName, newResult.flagReason ?: "Flagged", token)
                         } else {
                             isLastFlagged = false
                             lastStatusBadge = "✓ Clean (AI Verified)"
@@ -433,6 +465,60 @@ class AlifyMonitorService : Service() {
      * 2. Issues Spotify skip command asynchronously (POST /v1/me/player/next).
      * 3. Once track switches, smoothly ramps volume back up to original level over ~200ms.
      */
+    /**
+     * AI Dynamic Vibe-Swap & Skip:
+     * 1. Checks if AI Vibe-Swap is enabled in preferences.
+     * 2. If enabled: prompts AI for clean sister tracks matching genre, BPM, and mood.
+     * 3. Resolves the real Spotify track URI and injects it at the head of user's active Spotify queue.
+     * 4. Dispatches zero-latency audio duck and skips the flagged track, creating a seamless transition.
+     */
+    private fun handleFlaggedTrack(
+        trackName: String,
+        artistName: String,
+        flagReason: String,
+        token: String
+    ) {
+        val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
+        val enableVibeSwap = filterPrefs.getBoolean("enable_vibe_swap", true)
+
+        if (enableVibeSwap) {
+            val profileName = when (filterEngine.profile) {
+                0 -> "Islamic"
+                1 -> "Christian"
+                2 -> "Family Safe"
+                else -> "Conscious"
+            }
+
+            scope.launch {
+                try {
+                    val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
+                        context = this@AlifyMonitorService,
+                        flaggedTrack = trackName,
+                        flaggedArtist = artistName,
+                        flagReason = flagReason,
+                        profileName = profileName,
+                        spotifyToken = token,
+                        filterEngine = filterEngine
+                    )
+
+                    if (sisterTrack?.spotifyUri != null) {
+                        val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                        if (enqueued) {
+                            updateNotification("⚡ Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
+                            Log.i(TAG, "Dynamic vibe swap enqueued: '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Vibe substitution failed: ${e.message}")
+                } finally {
+                    skipTrack(token)
+                }
+            }
+        } else {
+            skipTrack(token)
+        }
+    }
+
     private fun skipTrack(token: String) {
         duckAudioImmediate()
 

@@ -292,6 +292,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.tilAiApiKey.visibility = if (enableAi) View.VISIBLE else View.GONE
         binding.etAiApiKey.setText(filterPrefs.getString("gemini_api_key", ""))
 
+        // Vibe-Swap Setting
+        binding.cbEnableVibeSwap.isChecked = filterPrefs.getBoolean("enable_vibe_swap", true)
+
         // Ethos Profile
         val savedProfile = filterPrefs.getInt("filter_profile", 0)
         binding.spProfileSettings.setSelection(savedProfile)
@@ -324,6 +327,7 @@ class SettingsActivity : AppCompatActivity() {
             .putInt("filter_strictness", binding.sbStrictnessSettings.progress)
             .putBoolean("filter_explicit", binding.cbExplicitSettings.isChecked)
             .putBoolean("enable_gemini", binding.cbEnableAi.isChecked)
+            .putBoolean("enable_vibe_swap", binding.cbEnableVibeSwap.isChecked)
             .putString("gemini_api_key", binding.etAiApiKey.text?.toString()?.trim() ?: "")
             .apply()
 

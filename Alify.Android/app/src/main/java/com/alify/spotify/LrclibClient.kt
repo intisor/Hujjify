@@ -21,6 +21,9 @@ import java.util.concurrent.TimeUnit
 
 class LrclibClient {
 
+    var lastRawSyncedLyrics: String? = null
+        private set
+
     companion object {
         private const val TAG = "LrclibClient"
         private const val BROWSER_UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
@@ -546,6 +549,7 @@ class LrclibClient {
 
         val synced = json.optString("syncedLyrics").trim()
         if (synced.isNotEmpty() && synced != "null") {
+            lastRawSyncedLyrics = synced
             return synced.replace(Regex("\\[\\d{2}:\\d{2}\\.\\d{2,3}]"), "").trim()
         }
         return null
