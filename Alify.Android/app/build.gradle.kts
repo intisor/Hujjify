@@ -16,7 +16,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 46
-        versionName = "2.0.0"
+        versionName = "1.9.6"
 
         manifestPlaceholders["redirectSchemeName"] = "ujify"
         manifestPlaceholders["redirectHostName"] = "callback"
