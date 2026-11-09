@@ -165,6 +165,45 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        // Unified AI Ethos Companion (DJ + Chat-to-Filter)
+        fun isFilterDirective(input: String): Boolean {
+            val lower = input.lowercase().trim()
+            val directiveTriggers = listOf(
+                "allow", "permit", "block", "filter", "don't skip", "dont skip",
+                "do not skip", "stop skipping", "ignore", "strict", "rule", "censor", "ban"
+            )
+            return directiveTriggers.any { lower.startsWith(it) || lower.contains(" $it") }
+        }
+
+        binding.etDjPrompt.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val str = s?.toString()?.trim() ?: ""
+                if (isFilterDirective(str)) {
+                    binding.btnSpinDj.text = "Rule ✓"
+                    binding.tvDjStatus.text = "Filter rule detected"
+                } else {
+                    binding.btnSpinDj.text = "Spin ▶"
+                    binding.tvDjStatus.text = if (str.isNotBlank()) "Music vibe session" else "Vibe or filter rule"
+                }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        fun applyFilterDirective(directive: String) {
+            val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
+            val current = filterPrefs.getString("custom_ethos_prompt", "") ?: ""
+            val updated = if (current.isNotBlank()) "$current. $directive" else directive
+            filterPrefs.edit().putString("custom_ethos_prompt", updated).apply()
+            PersistentVaultManager.saveVault(this)
+            AlifyMonitorService.invalidateCurrentTrack()
+
+            binding.etDjPrompt.setText("")
+            binding.tvDjStatus.text = "✓ Rule applied"
+            binding.tvActiveEthos.text = "Active Filter: ${updated.take(35)}..."
+            Toast.makeText(this, "✓ Ethos directive updated: Filter will now apply your rule.", Toast.LENGTH_SHORT).show()
+        }
+
         // AI Ethos DJ Session Trigger
         fun triggerDj(prompt: String) {
             if (!authManager.isConnected()) {
@@ -201,9 +240,13 @@ class MainActivity : AppCompatActivity() {
         binding.btnSpinDj.setOnClickListener {
             val text = binding.etDjPrompt.text?.toString()?.trim() ?: ""
             if (text.isNotBlank()) {
-                triggerDj(text)
+                if (isFilterDirective(text)) {
+                    applyFilterDirective(text)
+                } else {
+                    triggerDj(text)
+                }
             } else {
-                Toast.makeText(this, "Type a vibe (e.g. 'Chill Afrobeat') or tap a chip", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Type a vibe ('Chill Afrobeat') or rule ('Allow romance')", Toast.LENGTH_SHORT).show()
             }
         }
 

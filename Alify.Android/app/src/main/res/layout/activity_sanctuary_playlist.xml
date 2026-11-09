@@ -180,6 +180,20 @@
                 android:textSize="13sp"
                 android:visibility="gone" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGrantPermissions"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="@color/spotify_green"
+                android:text="⚡ Grant Playlist Access (1-Tap)"
+                android:textColor="@color/spotify_black"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:cornerRadius="8dp" />
+
             <!-- Container for Playlists List -->
             <LinearLayout
                 android:id="@+id/layoutPlaylistsContainer"

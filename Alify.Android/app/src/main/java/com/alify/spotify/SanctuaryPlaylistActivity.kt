@@ -44,16 +44,25 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         loadPlaylists()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!isMirroring && authManager.isConnected()) {
+            loadPlaylists()
+        }
+    }
+
     private fun loadPlaylists() {
         if (!authManager.isConnected()) {
             binding.pbLoadingPlaylists.visibility = View.GONE
             binding.tvEmptyPlaylists.visibility = View.VISIBLE
+            binding.btnGrantPermissions.visibility = View.GONE
             binding.tvEmptyPlaylists.text = "Connect your Spotify account in Settings to view and sanctify your playlists."
             return
         }
 
         binding.pbLoadingPlaylists.visibility = View.VISIBLE
         binding.tvEmptyPlaylists.visibility = View.GONE
+        binding.btnGrantPermissions.visibility = View.GONE
         binding.layoutPlaylistsContainer.removeAllViews()
 
         lifecycleScope.launch {
@@ -65,15 +74,39 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val playlists = PlaylistMirrorService.getUserPlaylists(token)
+            val result = PlaylistMirrorService.getUserPlaylists(token)
             binding.pbLoadingPlaylists.visibility = View.GONE
 
-            if (playlists.isEmpty()) {
-                binding.tvEmptyPlaylists.visibility = View.VISIBLE
-                binding.tvEmptyPlaylists.text = "No playlists found in your Spotify account."
-            } else {
-                binding.tvEmptyPlaylists.visibility = View.GONE
-                displayPlaylists(playlists, token)
+            when (result) {
+                is PlaylistFetchResult.Success -> {
+                    if (result.playlists.isEmpty()) {
+                        binding.tvEmptyPlaylists.visibility = View.VISIBLE
+                        binding.tvEmptyPlaylists.text = "No playlists found in your Spotify account."
+                        binding.btnGrantPermissions.visibility = View.GONE
+                    } else {
+                        binding.tvEmptyPlaylists.visibility = View.GONE
+                        binding.btnGrantPermissions.visibility = View.GONE
+                        displayPlaylists(result.playlists, token)
+                    }
+                }
+                is PlaylistFetchResult.PermissionRequired -> {
+                    binding.tvEmptyPlaylists.visibility = View.VISIBLE
+                    binding.tvEmptyPlaylists.text = "Spotify requires playlist permissions to read and clone your library. Tap below to grant access."
+                    binding.btnGrantPermissions.visibility = View.VISIBLE
+                    binding.btnGrantPermissions.setOnClickListener {
+                        val authIntent = authManager.buildAuthIntent()
+                        if (authIntent != null) {
+                            startActivity(authIntent)
+                        } else {
+                            Toast.makeText(this@SanctuaryPlaylistActivity, "Configure Spotify Developer Client ID first", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                is PlaylistFetchResult.Error -> {
+                    binding.tvEmptyPlaylists.visibility = View.VISIBLE
+                    binding.tvEmptyPlaylists.text = "Error loading playlists: ${result.message}"
+                    binding.btnGrantPermissions.visibility = View.GONE
+                }
             }
         }
     }

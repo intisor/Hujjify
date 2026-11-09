@@ -340,7 +340,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- AI Ethos DJ Card -->
+        <!-- AI Ethos Companion (Unified DJ + Chat-to-Filter) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardAiDj"
             android:layout_width="match_parent"
@@ -368,7 +368,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="🎧 AI Ethos DJ"
+                        android:text="🧠 AI Ethos Companion"
                         android:textColor="@color/spotify_green"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -377,7 +377,7 @@
                         android:id="@+id/tvDjStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Ask for any vibe"
+                        android:text="Vibe or filter rule"
                         android:textColor="@color/spotify_sub_text"
                         android:textSize="10sp" />
                 </LinearLayout>
@@ -469,7 +469,7 @@
                         android:layout_height="34dp"
                         android:layout_weight="1"
                         android:background="@drawable/stat_box_background"
-                        android:hint="Ask AI DJ: 'Calm acoustic Afrobeat'..."
+                        android:hint="Vibe ('Afrobeat') or rule ('Allow romance')..."
                         android:textColorHint="@color/spotify_sub_text"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="11sp"

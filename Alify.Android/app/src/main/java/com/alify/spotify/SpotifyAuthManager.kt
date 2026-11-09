@@ -20,7 +20,7 @@ class SpotifyAuthManager(private val context: Context) {
 
     companion object {
         const val REDIRECT_URI = "hujjify://callback"
-        const val SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+        const val SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private"
     }
 
     var customClientId: String?

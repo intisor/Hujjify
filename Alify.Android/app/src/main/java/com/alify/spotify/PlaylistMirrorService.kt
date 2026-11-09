@@ -27,6 +27,12 @@ data class MirrorProgress(
     val replacedCount: Int = 0
 )
 
+sealed class PlaylistFetchResult {
+    data class Success(val playlists: List<SpotifyPlaylistItem>) : PlaylistFetchResult()
+    data class PermissionRequired(val code: Int) : PlaylistFetchResult()
+    data class Error(val message: String) : PlaylistFetchResult()
+}
+
 object PlaylistMirrorService {
 
     private const val TAG = "PlaylistMirror"
@@ -39,7 +45,7 @@ object PlaylistMirrorService {
      * Retrieves the current user's playlists from Spotify.
      * GET /v1/me/playlists?limit=50
      */
-    suspend fun getUserPlaylists(token: String): List<SpotifyPlaylistItem> = withContext(Dispatchers.IO) {
+    suspend fun getUserPlaylists(token: String): PlaylistFetchResult = withContext(Dispatchers.IO) {
         val list = mutableListOf<SpotifyPlaylistItem>()
         try {
             val req = Request.Builder()
@@ -49,9 +55,16 @@ object PlaylistMirrorService {
                 .build()
 
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext emptyList()
-                val json = JSONObject(resp.body?.string() ?: "")
-                val items = json.optJSONArray("items") ?: return@withContext emptyList()
+                Log.d(TAG, "getUserPlaylists response code: ${resp.code}")
+                if (resp.code == 401 || resp.code == 403) {
+                    return@withContext PlaylistFetchResult.PermissionRequired(resp.code)
+                }
+                if (!resp.isSuccessful) {
+                    return@withContext PlaylistFetchResult.Error("Spotify API error (${resp.code})")
+                }
+                val body = resp.body?.string() ?: ""
+                val json = JSONObject(body)
+                val items = json.optJSONArray("items") ?: return@withContext PlaylistFetchResult.Success(emptyList())
                 for (i in 0 until items.length()) {
                     val p = items.optJSONObject(i) ?: continue
                     val id = p.optString("id")
@@ -68,10 +81,11 @@ object PlaylistMirrorService {
                     }
                 }
             }
+            PlaylistFetchResult.Success(list)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load playlists: ${e.message}", e)
+            PlaylistFetchResult.Error(e.message ?: "Network error")
         }
-        list
     }
 
     /**
