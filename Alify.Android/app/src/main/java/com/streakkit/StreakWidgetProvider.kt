@@ -57,10 +57,10 @@ class StreakWidgetProvider : AppWidgetProvider() {
 
             if (flameId != 0) {
                 val icon = when {
-                    status == "FROZEN" -> "❄️"
-                    completed -> "🔥"
-                    status == "AT_RISK" -> "⚠️"
-                    else -> "⌛"
+                    status == "FROZEN" -> "FROZEN"
+                    completed -> "ACTIVE"
+                    status == "AT_RISK" -> "RISK"
+                    else -> "PENDING"
                 }
                 views.setTextViewText(flameId, icon)
             }
@@ -81,7 +81,7 @@ class StreakWidgetProvider : AppWidgetProvider() {
             }
 
             if (shieldId != 0) {
-                views.setTextViewText(shieldId, "🛡️ $freezes")
+                views.setTextViewText(shieldId, "$freezes Freezes")
             }
 
             // Click Intent to open host app into StreakKit modal

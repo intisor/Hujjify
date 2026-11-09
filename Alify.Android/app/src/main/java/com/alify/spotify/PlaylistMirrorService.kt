@@ -90,7 +90,7 @@ object PlaylistMirrorService {
 
     /**
      * Audits an entire Spotify playlist track by track, finds clean sister tracks for any flagged song,
-     * and generates an "🛡️ Sanctuary: [Name]" playlist in the user's Spotify account.
+     * and generates an "Sanctuary: [Name]" playlist in the user's Spotify account.
      */
     suspend fun createSanctuaryMirror(
         context: Context,
@@ -177,13 +177,13 @@ object PlaylistMirrorService {
                 MirrorProgress(
                     current = total,
                     total = total,
-                    statusText = "Creating '🛡️ Sanctuary: $sourcePlaylistName' in Spotify...",
+                    statusText = "Creating 'Sanctuary: $sourcePlaylistName' in Spotify...",
                     cleanCount = cleanCount,
                     replacedCount = replacedCount
                 )
             )
 
-            val mirrorName = "🛡️ Sanctuary: $sourcePlaylistName"
+            val mirrorName = "Sanctuary: $sourcePlaylistName"
             val newPlaylistId = createEmptyPlaylist(mirrorName, token) ?: return@withContext null
 
             // 4. Populate clean tracks in batches of 100

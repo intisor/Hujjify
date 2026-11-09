@@ -452,7 +452,7 @@ class LrclibClient {
                 "https://openrouter.ai/api/v1/chat/completions"
             }
             val models = if (isGroq) {
-                listOf("openai/gpt-oss-120b", "qwen/qwen3.8-27b")
+                listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
             } else {
                 listOf("openrouter/free")
             }
@@ -495,7 +495,7 @@ class LrclibClient {
                 }
             }
         } else {
-            val models = listOf("gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite")
+            val models = listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
             for (model in models) {
                 try {
                     val jsonPayload = JSONObject().apply {

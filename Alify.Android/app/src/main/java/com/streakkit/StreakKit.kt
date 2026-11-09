@@ -374,7 +374,7 @@ object StreakKit {
                                 </style>
                             </head>
                             <body>
-                                <div class="icon">⚡</div>
+                                <div class="icon">★</div>
                                 <h2>Connecting to StreakKit...</h2>
                                 <p>Unable to connect to the backend server. Make sure the StreakKit backend is running.</p>
                                 <div class="url">$failingUrl</div>
@@ -620,7 +620,7 @@ object StreakKit {
                 val completedToday = json.optBoolean("completedToday", false)
 
                 if (autoShowNotification && notif != null && !completedToday) {
-                    val title = notif.optString("title", "🔥 Streak Alert")
+                    val title = notif.optString("title", "Streak Alert")
                     val bodyText = notif.optString("body", "Protect your streak today!")
                     StreakNotificationManager.showContrastNotification(
                         context = context,
@@ -748,7 +748,7 @@ object StreakKit {
         activity: Activity,
         ruleSlug: String,
         userId: String = "user_default",
-        flag: String = "🇳🇬",
+        flag: String = "NG",
         unitTitle: String = "Greetings",
         unitSubtitle: String = "Say hello and introduce yourself"
     ) {

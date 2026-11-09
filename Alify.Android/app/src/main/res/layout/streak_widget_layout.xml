@@ -12,8 +12,10 @@
         android:id="@+id/widget_flame_icon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🔥"
-        android:textSize="36sp"
+        android:text="STREAK"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#F59E0B"
         android:layout_marginEnd="12dp" />
 
     <LinearLayout
@@ -44,7 +46,7 @@
         android:id="@+id/widget_shield_icon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🛡️ 2"
+        android:text="2 Freezes"
         android:textColor="#38BDF8"
         android:textSize="13sp"
         android:textStyle="bold" />

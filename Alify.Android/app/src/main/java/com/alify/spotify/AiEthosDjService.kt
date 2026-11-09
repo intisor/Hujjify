@@ -32,7 +32,7 @@ object AiEthosDjService {
         onStatus: (String) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            onStatus("🎧 AI DJ is curating your '$userPrompt' session...")
+            onStatus("AI DJ is curating your '$userPrompt' session...")
 
             SanctuaryMemoryBank.init(context)
             val tasteContext = SanctuaryMemoryBank.buildTasteContext()
@@ -64,23 +64,23 @@ object AiEthosDjService {
             val primaryKey = keys.firstOrNull() ?: ""
 
             if (primaryKey.isBlank()) {
-                onStatus("⚠️ Please add an AI API key in Settings to use AI DJ")
+                onStatus("Please add an AI API key in Settings to use AI DJ")
                 return@withContext false
             }
 
             val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
             if (rawResponse.isNullOrBlank()) {
-                onStatus("⚠️ AI DJ could not generate recommendations")
+                onStatus("AI DJ could not generate recommendations")
                 return@withContext false
             }
 
             val candidates = parseSuggestions(rawResponse)
             if (candidates.isEmpty()) {
-                onStatus("⚠️ Could not parse song suggestions")
+                onStatus("Could not parse song suggestions")
                 return@withContext false
             }
 
-            onStatus("🔍 Resolving ${candidates.size} songs on Spotify...")
+            onStatus("Resolving ${candidates.size} songs on Spotify...")
 
             val resolvedUris = mutableListOf<String>()
             for (c in candidates) {
@@ -92,25 +92,25 @@ object AiEthosDjService {
             }
 
             if (resolvedUris.isEmpty()) {
-                onStatus("⚠️ Could not match tracks on Spotify catalog")
+                onStatus("Could not match tracks on Spotify catalog")
                 return@withContext false
             }
 
-            onStatus("▶️ Starting playback in Spotify (${resolvedUris.size} tracks)...")
+            onStatus("Starting playback in Spotify (${resolvedUris.size} tracks)...")
             val played = startPlayback(resolvedUris, token)
             if (played) {
-                onStatus("🎧 Playing: $userPrompt (${resolvedUris.size} tracks queued)")
+                onStatus("Playing: $userPrompt (${resolvedUris.size} tracks queued)")
             } else {
                 // If direct playback start failed (e.g. Spotify is in background), enqueue them instead
                 for (uri in resolvedUris) {
                     VibeSubstituteService.enqueueTrack(uri, token)
                 }
-                onStatus("⚡ Added ${resolvedUris.size} tracks to your Spotify queue!")
+                onStatus("Added ${resolvedUris.size} tracks to your Spotify queue!")
             }
             true
         } catch (e: Exception) {
             Log.e(TAG, "AI DJ session generation failed: ${e.message}", e)
-            onStatus("⚠️ AI DJ error: ${e.message}")
+            onStatus("AI DJ error: ${e.message}")
             false
         }
     }

@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
             com.streakkit.StreakKit.showDuolingoPath(
                 activity = this,
                 ruleSlug = "hujjify_playback",
-                flag = "🎧",
+                flag = "Music",
                 unitTitle = "Conscious Listening",
                 unitSubtitle = "Audit clean tracks & guard your ears"
             )
@@ -179,10 +179,10 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: android.text.Editable?) {
                 val str = s?.toString()?.trim() ?: ""
                 if (isFilterDirective(str)) {
-                    binding.btnSpinDj.text = "Rule ✓"
+                    binding.btnSpinDj.text = "Save Rule"
                     binding.tvDjStatus.text = "Filter rule detected"
                 } else {
-                    binding.btnSpinDj.text = "Spin ▶"
+                    binding.btnSpinDj.text = "Spin"
                     binding.tvDjStatus.text = if (str.isNotBlank()) "Music vibe session" else "Vibe or filter rule"
                 }
             }
@@ -199,9 +199,9 @@ class MainActivity : AppCompatActivity() {
             AlifyMonitorService.invalidateCurrentTrack()
 
             binding.etDjPrompt.setText("")
-            binding.tvDjStatus.text = "✓ Rule applied"
+            binding.tvDjStatus.text = "Rule applied"
             binding.tvActiveEthos.text = "Active Filter: ${updated.take(35)}..."
-            Toast.makeText(this, "✓ Ethos directive updated: Filter will now apply your rule.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Ethos directive updated: Filter will now apply your rule.", Toast.LENGTH_SHORT).show()
         }
 
         // AI Ethos DJ Session Trigger
@@ -210,12 +210,12 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Connect Spotify first to spin AI sessions", Toast.LENGTH_SHORT).show()
                 return
             }
-            binding.tvDjStatus.text = "🎧 Spinning session..."
+            binding.tvDjStatus.text = "Spinning session..."
             binding.btnSpinDj.isEnabled = false
             lifecycleScope.launch {
                 val token = authManager.getValidAccessToken()
                 if (token.isNullOrBlank()) {
-                    binding.tvDjStatus.text = "⚠️ Token error. Re-connect Spotify."
+                    binding.tvDjStatus.text = "Token error. Re-connect Spotify."
                     binding.btnSpinDj.isEnabled = true
                     return@launch
                 }
@@ -330,7 +330,7 @@ class MainActivity : AppCompatActivity() {
                 "Redirect URI: hujjify://callback\n\n" +
                 "Tap '1-Tap Auto-Link' to automatically log in, create the app, and configure your keys in seconds."
             )
-            .setPositiveButton("⚡ 1-Tap Auto-Link") { _, _ ->
+            .setPositiveButton("1-Tap Auto-Link") { _, _ ->
                 spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
             }
             .setNeutralButton("Manual Setup") { _, _ ->
@@ -399,11 +399,11 @@ class MainActivity : AppCompatActivity() {
                         if (AlifyMonitorService.isLastFlagged) {
                             val flagCount = AlifyMonitorService.lastFlaggedLines.size
                             val countStr = if (flagCount > 0) " ($flagCount flagged)" else ""
-                            binding.btnViewLyrics.text = "🔍 Inspect Flagged Verses$countStr"
+                            binding.btnViewLyrics.text = "Inspect Flagged Verses$countStr"
                             binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.flag_red)
                             binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.flag_red_light))
                         } else {
-                            binding.btnViewLyrics.text = "📜 View Lyrics & Stance Audit"
+                            binding.btnViewLyrics.text = "View Lyrics & Stance Audit"
                             binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.spotify_green)
                             binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
                         }
@@ -443,14 +443,14 @@ class MainActivity : AppCompatActivity() {
             if (prog?.optBoolean("completed", false) == true) {
                 binding.tvStreakStatusBadge.text = "Active Today"
                 binding.tvStreakStatusBadge.setTextColor(0xFF22C55E.toInt())
-                binding.tvStreakProgressSubtitle.text = "✓ Goal Completed ($cur/$target songs)"
+                binding.tvStreakProgressSubtitle.text = "Goal Completed ($cur/$target songs)"
             } else {
                 binding.tvStreakStatusBadge.text = "Pending ($cur/$target)"
                 binding.tvStreakStatusBadge.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
                 binding.tvStreakProgressSubtitle.text = "$cur / $target Clean songs observed today"
             }
             val freezes = streak.optInt("freezesAvailable", 2)
-            binding.tvStreakFreezes.text = "🛡️ $freezes/2"
+            binding.tvStreakFreezes.text = "Freezes: $freezes/2"
         }
 
         val recentTracks = DashboardStatsManager.getRecentTracks(this)
@@ -523,19 +523,19 @@ class MainActivity : AppCompatActivity() {
 
                     when (entry.statusBadge) {
                         "SKIPPED" -> {
-                            text = "⏭ Skipped"
+                            text = "Skipped"
                             setBackgroundResource(R.drawable.badge_skipped)
                         }
                         "FLAGGED" -> {
-                            text = "✕ Flagged"
+                            text = "Flagged"
                             setBackgroundResource(R.drawable.badge_flagged)
                         }
                         "NO_LYRICS" -> {
-                            text = "ℹ️ No Lyrics"
+                            text = "No Lyrics"
                             setBackgroundResource(R.drawable.badge_no_lyrics)
                         }
                         else -> {
-                            text = "✓ Clean"
+                            text = "Clean"
                             setBackgroundResource(R.drawable.badge_clean)
                         }
                     }

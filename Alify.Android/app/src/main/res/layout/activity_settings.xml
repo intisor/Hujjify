@@ -68,7 +68,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="⚡ 1. Spotify Connection (BYOK)"
+                    android:text="1. Spotify Connection (BYOK)"
                     android:textColor="@color/spotify_green"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -95,7 +95,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="6dp"
                         android:backgroundTint="@color/spotify_green"
-                        android:text="⚡ 1-Tap Auto-Link"
+                        android:text="1-Tap Auto-Link"
                         android:textColor="@color/spotify_black"
                         android:textSize="11sp"
                         android:textStyle="bold"
@@ -200,7 +200,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🛡️ 2. Ethos Guardrails &amp; Interventions"
+                    android:text="2. Ethos Guardrails &amp; Interventions"
                     android:textColor="@color/spotify_green"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -264,7 +264,7 @@
                     android:layout_height="32dp"
                     android:layout_marginTop="4dp"
                     android:checked="true"
-                    android:text="⚡ AI Vibe-Swap (Auto-replace flagged songs)"
+                    android:text="AI Vibe-Swap (Auto-replace flagged songs)"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="12sp" />
 
@@ -273,7 +273,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
                     android:checked="true"
-                    android:text="🎧 Radio Edit (Surgical word ducking on isolated flags)"
+                    android:text="Radio Edit (Surgical word ducking on isolated flags)"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="12sp" />
 
@@ -282,7 +282,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
                     android:checked="false"
-                    android:text="🚫 Strict Metadata: Skip Spotify [E] Explicit tags"
+                    android:text="Strict Metadata: Skip Spotify [E] Explicit tags"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="12sp" />
 
@@ -348,7 +348,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="🧠 3. AI Semantic Engine (BYOK)"
+                        android:text="3. AI Semantic Engine (BYOK)"
                         android:textColor="@color/spotify_green"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -497,7 +497,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="💾 4. Persistent Vault (Backup)"
+                        android:text="4. Persistent Vault (Backup)"
                         android:textColor="@color/spotify_green"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -525,7 +525,7 @@
                         android:layout_height="36dp"
                         android:layout_marginEnd="4dp"
                         android:layout_weight="1"
-                        android:text="💾 Backup"
+                        android:text="Backup"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="11sp"
                         app:cornerRadius="6dp"
@@ -539,7 +539,7 @@
                         android:layout_marginStart="4dp"
                         android:layout_marginEnd="4dp"
                         android:layout_weight="1"
-                        android:text="📥 Restore"
+                        android:text="Restore"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="11sp"
                         app:cornerRadius="6dp"
@@ -611,7 +611,7 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:text="🔄 Check Updates"
+                    android:text="Check Updates"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="11sp"
                     app:cornerRadius="6dp"

@@ -17,6 +17,7 @@ import com.alify.spotify.databinding.ActivityLyricsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 class LyricsActivity : AppCompatActivity() {
 
@@ -32,6 +33,7 @@ class LyricsActivity : AppCompatActivity() {
     private var currentLyrics: String? = null
 
     companion object {
+        private val breakdownCache = ConcurrentHashMap<String, String>()
         const val EXTRA_TRACK_ID = "extra_track_id"
         const val EXTRA_TRACK_NAME = "extra_track_name"
         const val EXTRA_ARTIST_NAME = "extra_artist_name"
@@ -134,7 +136,7 @@ class LyricsActivity : AppCompatActivity() {
         flaggedLines: List<String>
     ) {
         if (isFlagged) {
-            binding.tvLyricsStatusBadge.text = "✕ Flagged"
+            binding.tvLyricsStatusBadge.text = "Flagged"
             binding.tvLyricsStatusBadge.setBackgroundResource(R.drawable.badge_flagged)
             binding.cardAuditSummary.visibility = View.VISIBLE
             binding.tvAuditReason.text = flagReason ?: "Flagged: Ethos Violation"
@@ -145,7 +147,7 @@ class LyricsActivity : AppCompatActivity() {
                 "Offending content identified by AI content auditor."
             }
         } else {
-            binding.tvLyricsStatusBadge.text = "✓ Clean"
+            binding.tvLyricsStatusBadge.text = "Clean"
             binding.tvLyricsStatusBadge.setBackgroundResource(R.drawable.badge_clean)
             binding.cardAuditSummary.visibility = View.GONE
         }
@@ -174,7 +176,7 @@ class LyricsActivity : AppCompatActivity() {
 
                 // If service hadn't finished auditing yet or was unverified, evaluate directly now
                 if (!initialFlagged && initialFlaggedLines.isEmpty()) {
-                    binding.tvLyricsStatusBadge.text = "⏳ Auditing..."
+                    binding.tvLyricsStatusBadge.text = "Auditing..."
                     val evalResult = withContext(Dispatchers.IO) {
                         filterEngine.evaluate(trackName, artistName, false, fetchedLyrics)
                     }
@@ -224,9 +226,9 @@ class LyricsActivity : AppCompatActivity() {
                     // If this track is currently playing on Spotify, update badge and skip if violating!
                     if (trackName.equals(AlifyMonitorService.lastTrackName, ignoreCase = true)) {
                         AlifyMonitorService.lastStatusBadge = if (evalResult.isFlagged) {
-                            "✕ Flagged: ${evalResult.flagReason}"
+                            "Flagged: ${evalResult.flagReason}"
                         } else {
-                            "✓ Clean (AI Verified)"
+                            "Clean (AI Verified)"
                         }
                         if (evalResult.isFlagged) {
                             AlifyMonitorService.skipCurrentTrack(this@LyricsActivity)
@@ -333,7 +335,7 @@ class LyricsActivity : AppCompatActivity() {
                 val annotationText = annotations[matchingFlagged] ?: annotations[line]
                 if (!annotationText.isNullOrBlank()) {
                     val annotationView = TextView(this).apply {
-                        text = "⚠️ $annotationText"
+                        text = annotationText
                         setTextColor(ContextCompat.getColor(this@LyricsActivity, R.color.flag_red))
                         textSize = 11f
                         setTypeface(null, Typeface.ITALIC)
@@ -379,11 +381,11 @@ class LyricsActivity : AppCompatActivity() {
 
     private fun showVerdictOverrideDialog(selectedLine: String?) {
         val options = arrayOf(
-            "✓ Allow Song (Mark as Clean)",
-            "✕ Flag — Sexual / Innuendo",
-            "✕ Flag — Substance / Alcohol",
-            "✕ Flag — Profanity / Street Slang",
-            "✕ Flag — Blasphemy / Violence"
+            "Allow Song (Mark as Clean)",
+            "Flag — Sexual / Innuendo",
+            "Flag — Substance / Alcohol",
+            "Flag — Profanity / Street Slang",
+            "Flag — Blasphemy / Violence"
         )
 
         val title = if (!selectedLine.isNullOrBlank()) {
@@ -450,9 +452,9 @@ class LyricsActivity : AppCompatActivity() {
 
                 if (currentTrackName.equals(AlifyMonitorService.lastTrackName, ignoreCase = true)) {
                     AlifyMonitorService.lastStatusBadge = if (updated.isFlagged) {
-                        "✕ Flagged: ${updated.flagReason}"
+                        "Flagged: ${updated.flagReason}"
                     } else {
-                        "✓ Clean (User Override)"
+                        "Clean (User Override)"
                     }
                     if (updated.isFlagged) {
                         AlifyMonitorService.skipCurrentTrack(this)
@@ -471,9 +473,6 @@ class LyricsActivity : AppCompatActivity() {
         }
 
     private fun deconstructTrackMeaning() {
-        binding.pbDeconstructLoading.visibility = View.VISIBLE
-        binding.tvDeconstructContent.text = "Deconstructing song themes, metaphors, and cultural idioms..."
-
         val filterEngine = FilterEngine.fromPreferences(this)
         val profileName = when (filterEngine.profile) {
             EthosProfile.ISLAMIC -> "Islamic"
@@ -481,6 +480,17 @@ class LyricsActivity : AppCompatActivity() {
             EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
             EthosProfile.GENERAL -> "Conscious"
         }
+
+        val cacheKey = "$currentTrackName::$currentArtistName::$profileName"
+        val cached = breakdownCache[cacheKey]
+        if (!cached.isNullOrBlank()) {
+            binding.pbDeconstructLoading.visibility = View.GONE
+            binding.tvDeconstructContent.text = cached
+            return
+        }
+
+        binding.pbDeconstructLoading.visibility = View.VISIBLE
+        binding.tvDeconstructContent.text = "Deconstructing song themes, metaphors, and cultural idioms..."
 
         val prompt = """
             You are an expert musicologist and cultural analyst.
@@ -500,13 +510,20 @@ class LyricsActivity : AppCompatActivity() {
                 try {
                     val key = filterEngine.geminiApiKey
                     val keys = FilterEngine.buildProviderKeyWaterfall(key)
-                    val primaryKey = keys.firstOrNull() ?: ""
-                    if (primaryKey.isBlank()) {
+                    if (keys.isEmpty()) {
                         "Please configure an AI API Key in Settings to enable deep lyrical deconstruction."
                     } else {
-                        val response = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
-                        if (!response.isNullOrBlank()) {
-                            response.trim()
+                        var resolved: String? = null
+                        for (candidateKey in keys) {
+                            val response = FilterEngine.executeLlmWaterfallRequest(prompt, candidateKey)
+                            if (!response.isNullOrBlank()) {
+                                resolved = response.trim()
+                                break
+                            }
+                        }
+                        if (resolved != null) {
+                            breakdownCache[cacheKey] = resolved
+                            resolved
                         } else {
                             "Unable to analyze track themes at this moment. Please try again."
                         }

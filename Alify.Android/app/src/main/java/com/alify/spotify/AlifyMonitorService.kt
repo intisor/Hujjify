@@ -63,7 +63,7 @@ class AlifyMonitorService : Service() {
         var currentTrackId: String? = null
         var lastTrackName: String = "No track playing"
         var lastArtistName: String = ""
-        var lastStatusBadge: String = "✓ Ready"
+        var lastStatusBadge: String = "Ready"
         var isLastFlagged: Boolean = false
         var lastLyrics: String? = null
         var lastFlagReason: String? = null
@@ -76,7 +76,7 @@ class AlifyMonitorService : Service() {
         fun invalidateCurrentTrack() {
             // Forces re-audit when user changes settings or requests re-check
             auditCache.clear()
-            lastStatusBadge = "⏳ Re-auditing..."
+            lastStatusBadge = "Re-auditing..."
         }
 
         fun skipCurrentTrack(context: Context) {
@@ -181,7 +181,7 @@ class AlifyMonitorService : Service() {
             lastTrackName = trackName
             lastArtistName = artistName
 
-            if (trackId == lastTrackId && lastStatusBadge != "⏳ Re-auditing...") return
+            if (trackId == lastTrackId && lastStatusBadge != "Re-auditing...") return
 
             // Reload fresh preferences before every track audit
             filterEngine = FilterEngine.fromPreferences(this)
@@ -193,19 +193,19 @@ class AlifyMonitorService : Service() {
             val result: FilterResult
             val lyrics: String?
 
-            if (userOverride != null && lastStatusBadge != "⏳ Re-auditing...") {
+            if (userOverride != null && lastStatusBadge != "Re-auditing...") {
                 result = userOverride
                 lyrics = cached?.second ?: LrclibClient.getCachedLyrics(artistName, trackName)
                 lastLyrics = lyrics
                 lastTrackId = trackId
-            } else if (cached != null && !cached.second.isNullOrBlank() && lastStatusBadge != "⏳ Re-auditing...") {
+            } else if (cached != null && !cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
                 // Instant zero-latency full cache hit (lyrics present & verified)
                 result = cached.first
                 lyrics = cached.second
                 lastLyrics = lyrics
                 lastTrackId = trackId
                 Log.d(TAG, "Instant full cache hit for track '$trackName': flagged=${result.isFlagged}")
-            } else if (cached != null && cached.second.isNullOrBlank() && lastStatusBadge != "⏳ Re-auditing...") {
+            } else if (cached != null && cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
                 // Cached from queue lookahead without lyrics yet: use provisional result & start active recovery
                 result = cached.first
                 lyrics = null
@@ -214,7 +214,7 @@ class AlifyMonitorService : Service() {
                 Log.d(TAG, "Provisional cache hit (no lyrics) for '$trackName'. Launching recovery worker.")
                 launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
             } else {
-                lastStatusBadge = "⏳ Auditing with AI..."
+                lastStatusBadge = "Auditing with AI..."
                 updateNotification("Auditing: $trackName - $artistName")
 
                 // 1. Fetch Lyrics via parallel waterfall (LRCLIB + Genius parallel race + LLM fallback)
@@ -278,7 +278,7 @@ class AlifyMonitorService : Service() {
                     val intervals = SurgicalDuckingManager.calculateDuckIntervals(syncedLrc, result.flaggedLines)
                     if (intervals.isNotEmpty()) {
                         isLastFlagged = false
-                        lastStatusBadge = "🎧 Radio Edit: Ducking ${intervals.size} flagged words"
+                        lastStatusBadge = "Radio Edit: Ducking ${intervals.size} flagged words"
                         updateNotification("Radio Edit: Ducking words in $trackName")
                         SurgicalDuckingManager.scheduleSurgicalDucking(
                             context = this@AlifyMonitorService,
@@ -292,15 +292,15 @@ class AlifyMonitorService : Service() {
 
                 SurgicalDuckingManager.stop()
                 isLastFlagged = true
-                lastStatusBadge = "✕ Flagged: ${result.flagReason}"
+                lastStatusBadge = "Flagged: ${result.flagReason}"
                 updateNotification("Skipping: $trackName (${result.flagReason})")
                 handleFlaggedTrack(trackName, artistName, result.flagReason ?: "Flagged", token)
             } else {
                 isLastFlagged = false
                 lastStatusBadge = when {
-                    !lyrics.isNullOrBlank() && result.isVerifiedByAi -> "✓ Clean (AI Verified)"
-                    lyrics.isNullOrBlank() -> "ℹ️ No lyrics indexed (Searching in background...)"
-                    else -> "⚠️ ${result.flagReason ?: "Unverified"}"
+                    !lyrics.isNullOrBlank() && result.isVerifiedByAi -> "Clean (AI Verified)"
+                    lyrics.isNullOrBlank() -> "No lyrics indexed (Searching in background...)"
+                    else -> "${result.flagReason ?: "Unverified"}"
                 }
                 updateNotification("Playing: $trackName - $artistName")
                 SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
@@ -392,19 +392,19 @@ class AlifyMonitorService : Service() {
 
                         if (newResult.isFlagged) {
                             isLastFlagged = true
-                            lastStatusBadge = "✕ Flagged: ${newResult.flagReason}"
+                            lastStatusBadge = "Flagged: ${newResult.flagReason}"
                             updateNotification("Skipping: $trackName (${newResult.flagReason})")
                             handleFlaggedTrack(trackName, artistName, newResult.flagReason ?: "Flagged", token)
                         } else {
                             isLastFlagged = false
-                            lastStatusBadge = "✓ Clean (AI Verified)"
+                            lastStatusBadge = "Clean (AI Verified)"
                             updateNotification("Playing: $trackName - $artistName")
                         }
                     }
                 } else {
                     Log.d(TAG, "Background recovery concluded: no lyrics indexed for '$trackName'")
                     if (lastTrackId == trackId && lastStatusBadge.contains("Searching in background")) {
-                        lastStatusBadge = "ℹ️ No lyrics indexed (Clean)"
+                        lastStatusBadge = "No lyrics indexed (Clean)"
                         updateNotification("Playing: $trackName - $artistName")
                     }
                 }
@@ -579,7 +579,7 @@ class AlifyMonitorService : Service() {
                         if (sisterTrack?.spotifyUri != null) {
                             val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
                             if (enqueued) {
-                                updateNotification("⚡ Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
+                                updateNotification("Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
                                 Log.i(TAG, "Dynamic vibe swap enqueued: '${sisterTrack.title}' by '${sisterTrack.artist}'")
                             }
                         }

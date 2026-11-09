@@ -120,8 +120,8 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
             itemBinding.tvPlaylistTrackCount.text = "${playlist.trackCount} tracks"
 
             // If it's already a Sanctuary playlist, style differently
-            if (playlist.name.startsWith("🛡️ Sanctuary:")) {
-                itemBinding.btnSanctify.text = "Sanctified ✓"
+            if (playlist.name.contains("Sanctuary:")) {
+                itemBinding.btnSanctify.text = "Sanctified"
                 itemBinding.btnSanctify.isEnabled = false
                 itemBinding.btnSanctify.setBackgroundColor(0xFF2A2A2A.toInt())
                 itemBinding.btnSanctify.setTextColor(0xFF888888.toInt())
@@ -143,11 +143,11 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         isMirroring = true
         binding.cardMirrorProgress.visibility = View.VISIBLE
         binding.btnOpenInSpotify.visibility = View.GONE
-        binding.tvProgressTitle.text = "🛡️ Sanctifying: ${playlist.name}"
+        binding.tvProgressTitle.text = "Sanctifying: ${playlist.name}"
         binding.tvProgressStatus.text = "Starting audit..."
         binding.pbMirror.isIndeterminate = true
-        binding.tvCleanPreserved.text = "✓ Preserved: 0"
-        binding.tvVibeReplaced.text = "⚡ Swapped: 0"
+        binding.tvCleanPreserved.text = "Preserved: 0"
+        binding.tvVibeReplaced.text = "Swapped: 0"
 
         val filterEngine = FilterEngine.fromPreferences(this)
 
@@ -167,15 +167,15 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
                         binding.pbMirror.max = progress.total
                         binding.pbMirror.progress = progress.current
                     }
-                    binding.tvCleanPreserved.text = "✓ Preserved: ${progress.cleanCount}"
-                    binding.tvVibeReplaced.text = "⚡ Swapped: ${progress.replacedCount}"
+                    binding.tvCleanPreserved.text = "Preserved: ${progress.cleanCount}"
+                    binding.tvVibeReplaced.text = "Swapped: ${progress.replacedCount}"
                 }
             }
 
             isMirroring = false
 
             if (newPlaylistId != null) {
-                binding.tvProgressTitle.text = "✓ Sanctuary Mirror Created!"
+                binding.tvProgressTitle.text = "Sanctuary Mirror Created!"
                 binding.tvProgressStatus.text = "All explicit tracks were dynamically swapped with clean sister vibes."
                 binding.btnOpenInSpotify.visibility = View.VISIBLE
                 binding.btnOpenInSpotify.setOnClickListener {
@@ -191,7 +191,7 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
                 // Refresh list so user sees new mirror
                 loadPlaylists()
             } else {
-                binding.tvProgressTitle.text = "⚠️ Sanctuary Creation Incomplete"
+                binding.tvProgressTitle.text = "Sanctuary Creation Incomplete"
                 binding.tvProgressStatus.text = "Unable to complete mirror. Please check your connection and try again."
             }
         }

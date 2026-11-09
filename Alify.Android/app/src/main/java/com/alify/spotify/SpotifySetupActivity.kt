@@ -123,11 +123,11 @@ class SpotifySetupActivity : AppCompatActivity() {
 
         when {
             url.contains("accounts.spotify.com/login") -> {
-                binding.tvStatusMessage.text = "🔑 Log in to Spotify. Hujjify will automate the dashboard right after."
+                binding.tvStatusMessage.text = "Log in to Spotify. Hujjify will automate the dashboard right after."
                 binding.tvHeaderSubtitle.text = "Awaiting Spotify Login"
             }
             url.contains("developer.spotify.com/dashboard") -> {
-                binding.tvStatusMessage.text = "⚡ Automating: creating 'Hujjify' app with 'hujjify://callback'..."
+                binding.tvStatusMessage.text = "Automating: creating 'Hujjify' app with 'hujjify://callback'..."
                 binding.tvHeaderSubtitle.text = "Automating Dashboard..."
             }
             else -> {
@@ -355,8 +355,8 @@ class SpotifySetupActivity : AppCompatActivity() {
         authManager.customClientId = clientId
         PersistentVaultManager.saveVault(this)
 
-        binding.tvStatusMessage.text = "✅ Client ID Captured: $clientId"
-        Toast.makeText(this, "⚡ Hujjify App Linked Successfully!", Toast.LENGTH_LONG).show()
+        binding.tvStatusMessage.text = "Client ID Captured: $clientId"
+        Toast.makeText(this, "Hujjify App Linked Successfully!", Toast.LENGTH_LONG).show()
 
         val resultIntent = Intent().apply {
             putExtra(EXTRA_CLIENT_ID, clientId)

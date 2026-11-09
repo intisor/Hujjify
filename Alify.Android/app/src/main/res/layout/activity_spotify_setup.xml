@@ -84,7 +84,7 @@
             android:id="@+id/tvStatusMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚡ Log into Spotify if prompted. Hujjify will automatically create your app and capture your Client ID."
+            android:text="Log into Spotify if prompted. Hujjify will automatically create your app and capture your Client ID."
             android:textColor="@color/spotify_light_text"
             android:textSize="12sp" />
     </LinearLayout>

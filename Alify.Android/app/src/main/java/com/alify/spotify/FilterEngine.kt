@@ -123,8 +123,8 @@ class FilterEngine(
                     "https://openrouter.ai/api/v1/chat/completions"
                 }
                 val models = if (isGroq) {
-                    // Latest October 2026 Groq active models
-                    listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b")
+                    // High-speed production Groq models (~300-600ms latency)
+                    listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
                 } else {
                     listOf("openrouter/free")
                 }
@@ -175,8 +175,8 @@ class FilterEngine(
                     }
                 }
             } else {
-                // Google Gemini October 2026 active models
-                val models = listOf("gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite")
+                // Google Gemini active production models
+                val models = listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
                 for (model in models) {
                     try {
                         val jsonPayload = JSONObject().apply {

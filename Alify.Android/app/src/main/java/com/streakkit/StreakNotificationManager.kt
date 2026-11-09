@@ -15,7 +15,7 @@ import androidx.core.app.NotificationManagerCompat
  */
 class StreakNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val title = intent.getStringExtra("title") ?: "🔥 Your Streak is in Danger!"
+        val title = intent.getStringExtra("title") ?: "Your Streak is in Danger!"
         val body = intent.getStringExtra("body") ?: "Open the app now to keep your daily streak alive."
         val ruleSlug = intent.getStringExtra("ruleSlug") ?: "streak"
         val urgency = intent.getStringExtra("urgency") ?: "NUDGE"
@@ -139,14 +139,14 @@ object StreakNotificationManager {
 
         if (secondsLeft <= 1800) { // 30 minutes left
             val (t, b) = when (tone) {
-                "CONSCIOUS" -> "🚨 Final 30 Minutes" to "30 minutes remain to preserve your $streak-day commitment to $ruleName."
-                else -> "🚨 30 MINUTES LEFT. CODE RED." to "Say goodbye to your $streak days in 30 minutes unless you open the app RIGHT NOW."
+                "CONSCIOUS" -> "Final 30 Minutes" to "30 minutes remain to preserve your $streak-day commitment to $ruleName."
+                else -> "30 MINUTES LEFT. CODE RED." to "Say goodbye to your $streak days in 30 minutes unless you open the app RIGHT NOW."
             }
             showNotification(context, t, b, ruleSlug, "PANIC_30M", targetExpiryMs)
         } else if (hoursLeft <= 2.0) { // 2 hours left
             val (t, b) = when (tone) {
-                "CONSCIOUS" -> "⏳ 2 Hours Left Today" to "Protect your $streak-day conscious habit before midnight."
-                else -> "⚠️ CARDIAC ARREST: $streak Days in Danger!" to "Your streak flatlines in under 2 hours. Don't throw away $streak days of dedication!"
+                "CONSCIOUS" -> "2 Hours Left Today" to "Protect your $streak-day conscious habit before midnight."
+                else -> "CARDIAC ARREST: $streak Days in Danger!" to "Your streak flatlines in under 2 hours. Don't throw away $streak days of dedication!"
             }
             showNotification(context, t, b, ruleSlug, "URGENT_2H", targetExpiryMs)
         }

@@ -237,7 +237,7 @@ class SettingsActivity : AppCompatActivity() {
                 client.newCall(request).execute().use { response ->
                     withContext(Dispatchers.Main) {
                         binding.btnCheckUpdates.isEnabled = true
-                        binding.btnCheckUpdates.text = "🔄 Check for Updates on GitHub"
+                        binding.btnCheckUpdates.text = "Check for Updates on GitHub"
 
                         if (!response.isSuccessful) {
                             Toast.makeText(this@SettingsActivity, "Could not fetch releases (HTTP ${response.code})", Toast.LENGTH_SHORT).show()
@@ -270,7 +270,7 @@ class SettingsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     binding.btnCheckUpdates.isEnabled = true
-                    binding.btnCheckUpdates.text = "🔄 Check for Updates on GitHub"
+                    binding.btnCheckUpdates.text = "Check for Updates on GitHub"
                     Toast.makeText(this@SettingsActivity, "Network error checking updates", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -343,7 +343,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun updateVaultStatus() {
         val hasDiskVault = PersistentVaultManager.hasVaultOnDisk(this)
         if (hasDiskVault) {
-            binding.tvVaultStatus.text = "Status: ✓ Active in Documents/Alify (survives uninstall)"
+            binding.tvVaultStatus.text = "Status: Active in Documents/Alify (survives uninstall)"
             binding.tvVaultStatus.setTextColor(getColor(R.color.spotify_green))
         } else {
             val spotifyPrefs = getSharedPreferences("alify_spotify_prefs", Context.MODE_PRIVATE)
