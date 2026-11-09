@@ -330,6 +330,159 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- AI Ethos DJ Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardAiDj"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardBackgroundColor="@color/spotify_dark_card"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:contentPadding="10dp"
+            app:strokeColor="@color/spotify_green"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🎧 AI Ethos DJ"
+                        android:textColor="@color/spotify_green"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvDjStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ask for any vibe"
+                        android:textColor="@color/spotify_sub_text"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <!-- Vibe Chips -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/chipWorkout"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/stat_box_background"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
+                            android:text="⚡ Workout Hype"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chipFocus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/stat_box_background"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
+                            android:text="📚 Deep Focus"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chipDrive"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/stat_box_background"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
+                            android:text="🌙 Peaceful Drive"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chipGrateful"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/stat_box_background"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
+                            android:text="🤲 Shukr &amp; Soul"
+                            android:textColor="@color/spotify_light_text"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <!-- Prompt Input Bar -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/etDjPrompt"
+                        android:layout_width="0dp"
+                        android:layout_height="34dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/stat_box_background"
+                        android:hint="Ask AI DJ: 'Calm acoustic Afrobeat'..."
+                        android:textColorHint="@color/spotify_sub_text"
+                        android:textColor="@color/spotify_light_text"
+                        android:textSize="11sp"
+                        android:paddingHorizontal="10dp"
+                        android:imeOptions="actionDone"
+                        android:singleLine="true" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSpinDj"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:layout_marginStart="6dp"
+                        android:backgroundTint="@color/spotify_green"
+                        android:text="Spin ▶"
+                        android:textColor="@color/spotify_black"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Protection Dashboard & Analytics Card -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardDashboard"

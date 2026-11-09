@@ -44,6 +44,9 @@ class AlifyMonitorService : Service() {
     private var currentPlaybackProgressMs: Long = 0L
     private var progressTimestamp: Long = 0L
 
+    private var lastSanctuaryAutoplayTimeMs = 0L
+    private val preSwappedQueueTrackIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     private fun getCurrentPositionMs(): Long {
         return currentPlaybackProgressMs + (System.currentTimeMillis() - progressTimestamp)
     }
@@ -424,6 +427,15 @@ class AlifyMonitorService : Service() {
                 val queueArray = json.optJSONArray("queue") ?: return
 
                 val countToPreAudit = minOf(4, queueArray.length())
+                val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
+                val enableVibeSwap = filterPrefs.getBoolean("enable_vibe_swap", true)
+                val profileName = when (filterEngine.profile) {
+                    0 -> "Islamic"
+                    1 -> "Christian"
+                    2 -> "Family Safe"
+                    else -> "Conscious"
+                }
+
                 for (i in 0 until countToPreAudit) {
                     val qItem = queueArray.optJSONObject(i) ?: continue
                     val qTrackId = qItem.optString("id")
@@ -435,23 +447,72 @@ class AlifyMonitorService : Service() {
                     } else "Unknown Artist"
 
                     val qKey = if (qTrackId.isNotBlank()) qTrackId else "$qArtistName::$qTrackName".lowercase()
-                    if (auditCache.containsKey(qKey)) continue
+                    val (qResult, _) = auditCache.getOrPut(qKey) {
+                        Log.d(TAG, "Pre-auditing upcoming track in queue: '$qTrackName' by '$qArtistName'")
+                        val qLyrics = lrclibClient.getLyrics(qArtistName, qTrackName, filterEngine.geminiApiKey)
+                        val evaluated = filterEngine.evaluate(qTrackName, qArtistName, qExplicit, qLyrics)
+                        SilentCorpusHarvester.recordEvaluation(
+                            context = this@AlifyMonitorService,
+                            trackName = qTrackName,
+                            artistName = qArtistName,
+                            profile = filterEngine.profile,
+                            strictness = filterEngine.strictness,
+                            customDirective = filterEngine.customEthosPrompt,
+                            lyrics = qLyrics,
+                            result = evaluated
+                        )
+                        Pair(evaluated, qLyrics)
+                    }
 
-                    Log.d(TAG, "Pre-auditing upcoming track in queue: '$qTrackName' by '$qArtistName'")
-                    val qLyrics = lrclibClient.getLyrics(qArtistName, qTrackName, filterEngine.geminiApiKey)
-                    val qResult = filterEngine.evaluate(qTrackName, qArtistName, qExplicit, qLyrics)
-                    auditCache[qKey] = Pair(qResult, qLyrics)
-                    SilentCorpusHarvester.recordEvaluation(
-                        context = this@AlifyMonitorService,
-                        trackName = qTrackName,
-                        artistName = qArtistName,
-                        profile = filterEngine.profile,
-                        strictness = filterEngine.strictness,
-                        customDirective = filterEngine.customEthosPrompt,
-                        lyrics = qLyrics,
-                        result = qResult
-                    )
                     Log.i(TAG, "Upcoming track '$qTrackName' pre-audited: flagged=${qResult.isFlagged}")
+
+                    // Lookahead Pre-Enqueue: If next immediate track (i == 0) is flagged, pre-enqueue clean sister track now!
+                    if (i == 0 && qResult.isFlagged && enableVibeSwap && qTrackId.isNotBlank()) {
+                        if (!preSwappedQueueTrackIds.contains(qTrackId)) {
+                            preSwappedQueueTrackIds.add(qTrackId)
+                            val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
+                                context = this@AlifyMonitorService,
+                                flaggedTrack = qTrackName,
+                                flaggedArtist = qArtistName,
+                                flagReason = qResult.flagReason ?: "Flagged in upcoming queue",
+                                profileName = profileName,
+                                spotifyToken = token,
+                                filterEngine = filterEngine
+                            )
+                            if (sisterTrack?.spotifyUri != null) {
+                                VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                                Log.i(TAG, "Autonomous Guardian: Pre-enqueued clean sister track '${sisterTrack.title}' for upcoming flagged track '$qTrackName'")
+                            }
+                        }
+                    }
+                }
+
+                // Autonomous Sanctuary Autoplay:
+                // When queue is low (<= 2 tracks remaining), prevent Spotify from drifting into unvetted explicit autoplay
+                // by auto-extending with clean sister tracks matching the current session.
+                val now = System.currentTimeMillis()
+                if (queueArray.length() <= 2 && enableVibeSwap && (now - lastSanctuaryAutoplayTimeMs > 60000L)) {
+                    val sessionTrack = lastTrackName
+                    val sessionArtist = lastArtistName
+                    if (sessionTrack.isNotBlank() && sessionTrack != "No track playing" && !isLastFlagged) {
+                        lastSanctuaryAutoplayTimeMs = now
+                        Log.i(TAG, "Autonomous Sanctuary Autoplay: Queue low (${queueArray.length()} tracks). Extending session based on '$sessionTrack' by '$sessionArtist'")
+                        val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
+                            context = this@AlifyMonitorService,
+                            flaggedTrack = sessionTrack,
+                            flaggedArtist = sessionArtist,
+                            flagReason = "Extending session with matching clean sister vibes",
+                            profileName = profileName,
+                            spotifyToken = token,
+                            filterEngine = filterEngine
+                        )
+                        if (sisterTrack?.spotifyUri != null) {
+                            val ok = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                            if (ok) {
+                                Log.i(TAG, "Autonomous Sanctuary Autoplay: Successfully extended queue with '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -491,22 +552,27 @@ class AlifyMonitorService : Service() {
 
             scope.launch {
                 try {
-                    val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
-                        context = this@AlifyMonitorService,
-                        flaggedTrack = trackName,
-                        flaggedArtist = artistName,
-                        flagReason = flagReason,
-                        profileName = profileName,
-                        spotifyToken = token,
-                        filterEngine = filterEngine
-                    )
+                    val alreadyPreEnqueued = currentTrackId != null && preSwappedQueueTrackIds.contains(currentTrackId)
+                    if (!alreadyPreEnqueued) {
+                        val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
+                            context = this@AlifyMonitorService,
+                            flaggedTrack = trackName,
+                            flaggedArtist = artistName,
+                            flagReason = flagReason,
+                            profileName = profileName,
+                            spotifyToken = token,
+                            filterEngine = filterEngine
+                        )
 
-                    if (sisterTrack?.spotifyUri != null) {
-                        val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
-                        if (enqueued) {
-                            updateNotification("⚡ Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
-                            Log.i(TAG, "Dynamic vibe swap enqueued: '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                        if (sisterTrack?.spotifyUri != null) {
+                            val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                            if (enqueued) {
+                                updateNotification("⚡ Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
+                                Log.i(TAG, "Dynamic vibe swap enqueued: '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                            }
                         }
+                    } else {
+                        Log.i(TAG, "Dynamic vibe swap: Sister track was already pre-enqueued by Autonomous Queue Guardian!")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Vibe substitution failed: ${e.message}")

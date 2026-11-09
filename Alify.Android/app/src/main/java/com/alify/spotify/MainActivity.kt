@@ -154,6 +154,53 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        // AI Ethos DJ Session Trigger
+        fun triggerDj(prompt: String) {
+            if (!authManager.isConnected()) {
+                Toast.makeText(this, "Connect Spotify first to spin AI sessions", Toast.LENGTH_SHORT).show()
+                return
+            }
+            binding.tvDjStatus.text = "🎧 Spinning session..."
+            binding.btnSpinDj.isEnabled = false
+            lifecycleScope.launch {
+                val token = authManager.getValidAccessToken()
+                if (token.isNullOrBlank()) {
+                    binding.tvDjStatus.text = "⚠️ Token error. Re-connect Spotify."
+                    binding.btnSpinDj.isEnabled = true
+                    return@launch
+                }
+                val filterEngine = FilterEngine.fromPreferences(this@MainActivity)
+                val success = AiEthosDjService.generateAndPlaySession(
+                    context = this@MainActivity,
+                    userPrompt = prompt,
+                    token = token,
+                    filterEngine = filterEngine
+                ) { status ->
+                    runOnUiThread {
+                        binding.tvDjStatus.text = status
+                    }
+                }
+                binding.btnSpinDj.isEnabled = true
+                if (success) {
+                    binding.etDjPrompt.setText("")
+                }
+            }
+        }
+
+        binding.btnSpinDj.setOnClickListener {
+            val text = binding.etDjPrompt.text?.toString()?.trim() ?: ""
+            if (text.isNotBlank()) {
+                triggerDj(text)
+            } else {
+                Toast.makeText(this, "Type a vibe (e.g. 'Chill Afrobeat') or tap a chip", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.chipWorkout.setOnClickListener { triggerDj("High-energy workout motivation & heavy beats") }
+        binding.chipFocus.setOnClickListener { triggerDj("Calm lo-fi and acoustic instrumental focus") }
+        binding.chipDrive.setOnClickListener { triggerDj("Peaceful night drive, melodic groove") }
+        binding.chipGrateful.setOnClickListener { triggerDj("Uplifting soul & gratitude music") }
+
         // View Lyrics & Annotations Button
         binding.btnViewLyrics.setOnClickListener {
             val intent = LyricsActivity.createIntent(
