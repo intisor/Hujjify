@@ -77,11 +77,14 @@ class SpotifyAuthManager(private val context: Context) {
         val code = uri.getQueryParameter("code") ?: return@withContext false
         val verifier = codeVerifier ?: return@withContext false
 
+        // Match exact callback scheme and host from incoming Spotify redirect (e.g. hujjify://callback or alify://callback)
+        val actualRedirectUri = "${uri.scheme}://${uri.host}"
+
         val formBody = FormBody.Builder()
             .add("client_id", currentClientId)
             .add("grant_type", "authorization_code")
             .add("code", code)
-            .add("redirect_uri", REDIRECT_URI)
+            .add("redirect_uri", actualRedirectUri)
             .add("code_verifier", verifier)
             .build()
 
@@ -92,7 +95,11 @@ class SpotifyAuthManager(private val context: Context) {
 
         try {
             httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext false
+                if (!response.isSuccessful) {
+                    val errBody = response.body?.string() ?: ""
+                    android.util.Log.e("SpotifyAuthManager", "Token exchange failed HTTP ${response.code}: $errBody")
+                    return@withContext false
+                }
                 val body = response.body?.string() ?: return@withContext false
                 val json = JSONObject(body)
 
@@ -103,6 +110,7 @@ class SpotifyAuthManager(private val context: Context) {
                 }
                 val expiresIn = json.optLong("expires_in", 3600)
                 expiresAt = System.currentTimeMillis() + (expiresIn * 1000)
+                codeVerifier = null // Consume one-time verifier
                 PersistentVaultManager.saveVault(context)
                 return@withContext true
             }

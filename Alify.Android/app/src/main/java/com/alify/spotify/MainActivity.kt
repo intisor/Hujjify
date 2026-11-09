@@ -109,6 +109,12 @@ class MainActivity : AppCompatActivity() {
     private fun handleRedirectIntent(intent: Intent?) {
         val uri = intent?.data ?: return
         if ((uri.scheme == "hujjify" || uri.scheme == "alify") && uri.host == "callback") {
+            val error = uri.getQueryParameter("error")
+            if (!error.isNullOrBlank()) {
+                val msg = if (error == "access_denied") "Spotify authorization was canceled." else "Spotify error: $error"
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                return
+            }
             lifecycleScope.launch {
                 val success = authManager.handleCallback(uri)
                 if (success) {
