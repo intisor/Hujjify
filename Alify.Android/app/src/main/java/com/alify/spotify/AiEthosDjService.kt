@@ -34,6 +34,10 @@ object AiEthosDjService {
         try {
             onStatus("🎧 AI DJ is curating your '$userPrompt' session...")
 
+            SanctuaryMemoryBank.init(context)
+            val tasteContext = SanctuaryMemoryBank.buildTasteContext()
+            val tastePrompt = if (tasteContext.isNotBlank()) "\nListener's personal verified taste context: $tasteContext\nHarmonize with their preferred sonic aesthetic while matching the requested vibe.\n" else ""
+
             val profileName = when (filterEngine.profile) {
                 0 -> "Islamic"
                 1 -> "Christian"
@@ -45,7 +49,7 @@ object AiEthosDjService {
                 You are an elite musicologist and AI DJ curating an ethical, conscious music session on Spotify.
                 The user requested: "$userPrompt"
                 Ethos strictness: $profileName (Must have 100% wholesome, clean, positive, or uplifting lyrics with ZERO explicit language, vulgarity, violence, or obscenity).
-
+                $tastePrompt
                 Recommend 6 real, widely known, high-energy or vibe-matching tracks on Spotify that match the exact tempo, genre, and emotion requested.
                 DO NOT recommend fictional songs. DO NOT recommend songs with explicit tags.
 
@@ -83,6 +87,7 @@ object AiEthosDjService {
                 val uri = VibeSubstituteService.searchSpotifyTrack(c.title, c.artist, token)
                 if (uri != null) {
                     resolvedUris.add(uri)
+                    SanctuaryMemoryBank.recordCleanTrack(context, c.title, c.artist, uri, "dj")
                 }
             }
 

@@ -43,12 +43,16 @@ object VibeSubstituteService {
         filterEngine: FilterEngine
     ): SubstituteSuggestion? = withContext(Dispatchers.IO) {
         try {
+            SanctuaryMemoryBank.init(context)
+            val tasteContext = SanctuaryMemoryBank.buildTasteContext()
+            val tastePrompt = if (tasteContext.isNotBlank()) "\nListener's personal verified taste context: $tasteContext\nPrefer clean sister tracks that align with this aesthetic if suitable.\n" else ""
+
             val prompt = """
                 You are an expert music curator and musicologist.
                 The following song was flagged by an ethical music sentinel for violating the $profileName listening ethos:
                 Track: "$flaggedTrack" by "$flaggedArtist"
                 Violation Reason: "$flagReason"
-
+                $tastePrompt
                 Recommend 3 high-quality, real, verified alternative songs available on Spotify that:
                 1. Match the EXACT SAME musical genre, acoustic energy, tempo/BPM, beat pattern, and vocal vibe.
                 2. Have 100% CLEAN, positive, inspiring, or wholesome lyrics with ZERO explicit language, violence, or vulgarity.
@@ -84,6 +88,7 @@ object VibeSubstituteService {
                 val uri = searchSpotifyTrack(candidate.title, candidate.artist, spotifyToken)
                 if (uri != null) {
                     Log.i(TAG, "Found Spotify match for sister track: '${candidate.title}' by '${candidate.artist}' -> $uri")
+                    SanctuaryMemoryBank.recordCleanTrack(context, candidate.title, candidate.artist, uri, "vibe_swap")
                     return@withContext candidate.copy(spotifyUri = uri)
                 }
             }

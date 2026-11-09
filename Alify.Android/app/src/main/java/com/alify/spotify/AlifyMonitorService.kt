@@ -303,6 +303,7 @@ class AlifyMonitorService : Service() {
                     else -> "⚠️ ${result.flagReason ?: "Unverified"}"
                 }
                 updateNotification("Playing: $trackName - $artistName")
+                SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
             }
 
             // Lookahead Queue Pre-Auditing: Quietly pre-audit the upcoming tracks in the background
@@ -497,19 +498,30 @@ class AlifyMonitorService : Service() {
                     if (sessionTrack.isNotBlank() && sessionTrack != "No track playing" && !isLastFlagged) {
                         lastSanctuaryAutoplayTimeMs = now
                         Log.i(TAG, "Autonomous Sanctuary Autoplay: Queue low (${queueArray.length()} tracks). Extending session based on '$sessionTrack' by '$sessionArtist'")
-                        val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
-                            context = this@AlifyMonitorService,
-                            flaggedTrack = sessionTrack,
-                            flaggedArtist = sessionArtist,
-                            flagReason = "Extending session with matching clean sister vibes",
-                            profileName = profileName,
-                            spotifyToken = token,
-                            filterEngine = filterEngine
-                        )
-                        if (sisterTrack?.spotifyUri != null) {
-                            val ok = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                        
+                        val knownSeed = SanctuaryMemoryBank.getRecentCleanSeeds(5).firstOrNull { 
+                            it.spotifyUri != null && !it.title.equals(sessionTrack, ignoreCase = true) 
+                        }
+                        if (knownSeed?.spotifyUri != null) {
+                            val ok = VibeSubstituteService.enqueueTrack(knownSeed.spotifyUri, token)
                             if (ok) {
-                                Log.i(TAG, "Autonomous Sanctuary Autoplay: Successfully extended queue with '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                                Log.i(TAG, "Autonomous Sanctuary Autoplay: Instant-enqueued verified clean seed '${knownSeed.title}' by '${knownSeed.artist}'")
+                            }
+                        } else {
+                            val sisterTrack = VibeSubstituteService.findCleanSisterTrack(
+                                context = this@AlifyMonitorService,
+                                flaggedTrack = sessionTrack,
+                                flaggedArtist = sessionArtist,
+                                flagReason = "Extending session with matching clean sister vibes",
+                                profileName = profileName,
+                                spotifyToken = token,
+                                filterEngine = filterEngine
+                            )
+                            if (sisterTrack?.spotifyUri != null) {
+                                val ok = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
+                                if (ok) {
+                                    Log.i(TAG, "Autonomous Sanctuary Autoplay: Successfully extended queue with '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                                }
                             }
                         }
                     }

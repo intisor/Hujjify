@@ -126,6 +126,7 @@ object PlaylistMirrorService {
                 if (!eval.isFlagged) {
                     cleanUris.add(currentUri)
                     cleanCount++
+                    SanctuaryMemoryBank.recordCleanTrack(context, currentTrackName, currentArtist, currentUri, "playlist_mirror")
                 } else {
                     // Track is flagged! Dynamically find a clean sister track with the same vibe
                     val profileName = when (filterEngine.profile) {
@@ -148,6 +149,7 @@ object PlaylistMirrorService {
                     if (substitute?.spotifyUri != null) {
                         cleanUris.add(substitute.spotifyUri)
                         replacedCount++
+                        SanctuaryMemoryBank.recordCleanTrack(context, substitute.title, substitute.artist, substitute.spotifyUri, "playlist_mirror_swap")
                         Log.i(TAG, "Replaced '$currentTrackName' with '${substitute.title}' (${substitute.spotifyUri})")
                     } else {
                         // If no substitute found, omit the dirty track to keep the sanctuary pure

@@ -433,6 +433,7 @@ class LyricsActivity : AppCompatActivity() {
                     "${currentArtistName.trim().lowercase()}::${currentTrackName.trim().lowercase()}"
                 }
                 AlifyMonitorService.auditCache[cacheKey] = Pair(updated, currentLyrics)
+                SanctuaryMemoryBank.recordUserOverride(this, currentTrackName, currentArtistName, !updated.isFlagged)
 
                 DashboardStatsManager.updateTrackAudit(
                     context = this,
