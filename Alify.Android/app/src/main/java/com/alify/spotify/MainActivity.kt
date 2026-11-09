@@ -1,6 +1,7 @@
 package com.alify.spotify
 
 import android.Manifest
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -16,6 +17,7 @@ import android.widget.TextView
 import android.graphics.Typeface
 import android.text.TextUtils
 import android.view.Gravity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,6 +31,21 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var authManager: SpotifyAuthManager
+
+    private val spotifySetupLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            updateAuthState()
+            // If Client ID captured and not yet connected to Spotify, start OAuth flow immediately
+            if (authManager.hasClientId && !authManager.isConnected()) {
+                val authIntent = authManager.buildAuthIntent()
+                if (authIntent != null) {
+                    startActivity(authIntent)
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,6 +142,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        binding.btnAutoLinkSpotify.setOnClickListener {
+            spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
+        }
+
         binding.btnSetupClientId.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -205,17 +226,14 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Spotify Client ID Required")
             .setMessage(
                 "Spotify requires each user to have their own free Developer Client ID so you have personal, unlimited access without developer whitelist restrictions.\n\n" +
-                "Redirect URI to set in your Spotify App:\nhujjify://callback\n(or alify://callback)\n\n" +
-                "Would you like to configure your Client ID now?"
+                "Redirect URI: hujjify://callback\n\n" +
+                "Tap '1-Tap Auto-Link' to automatically log in, create the app, and configure your keys in seconds."
             )
-            .setPositiveButton("Configure in Settings") { _, _ ->
-                startActivity(Intent(this, SettingsActivity::class.java))
+            .setPositiveButton("⚡ 1-Tap Auto-Link") { _, _ ->
+                spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
             }
-            .setNeutralButton("Copy Redirect URI") { _, _ ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Redirect URI", "hujjify://callback")
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "Redirect URI copied: hujjify://callback", Toast.LENGTH_SHORT).show()
+            .setNeutralButton("Manual Setup") { _, _ ->
+                startActivity(Intent(this, SettingsActivity::class.java))
             }
             .setNegativeButton("Cancel", null)
             .show()

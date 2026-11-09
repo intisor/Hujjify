@@ -1,5 +1,6 @@
 package com.alify.spotify
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -37,6 +38,19 @@ class SettingsActivity : AppCompatActivity() {
                 Toast.makeText(this, "Vault successfully imported & restored!", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Failed to import vault file", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+        private val spotifySetupLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val clientId = result.data?.getStringExtra(SpotifySetupActivity.EXTRA_CLIENT_ID)
+                ?: SpotifyAuthManager(this).customClientId
+            if (!clientId.isNullOrBlank()) {
+                binding.etCustomClientId.setText(clientId)
+                Toast.makeText(this, "Client ID loaded into settings!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -89,6 +103,10 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnSaveSettings.setOnClickListener {
             savePreferences()
+        }
+
+                binding.btnAutoLinkSettings.setOnClickListener {
+            spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
         }
 
         // Spotify Helper Links

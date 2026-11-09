@@ -58,6 +58,12 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".SpotifySetupActivity"
+            android:exported="false"
+            android:label="Spotify App Auto-Link"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
             android:name=".LyricsActivity"
             android:exported="false"
             android:label="Lyrics &amp; Stance Audit"

@@ -80,6 +80,19 @@
                     android:textColor="@color/spotify_sub_text"
                     android:textSize="13sp" />
 
+                <!-- 1-Tap Auto-Link Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAutoLinkSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/spotify_green"
+                    android:text="⚡ 1-Tap Auto-Create &amp; Link App"
+                    android:textColor="@color/spotify_black"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="8dp" />
+
                 <!-- Step 1 Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnOpenSpotifyDashboard"
