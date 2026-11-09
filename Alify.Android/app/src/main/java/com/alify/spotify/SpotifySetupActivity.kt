@@ -54,8 +54,13 @@ class SpotifySetupActivity : AppCompatActivity() {
         }
 
         binding.btnForceExtract.setOnClickListener {
-            injectAutomationScript(force = true)
-            Toast.makeText(this, "Scanning page for Client ID...", Toast.LENGTH_SHORT).show()
+            val currentUrl = binding.webView.url
+            if (currentUrl != null && currentUrl.contains("developer.spotify.com")) {
+                injectAutomationScript(force = true)
+                Toast.makeText(this, "Scanning page for Client ID...", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Please log in first. Automation runs on Developer Dashboard.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -103,7 +108,10 @@ class SpotifySetupActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 updateStatusForUrl(url)
-                injectAutomationScript(force = false)
+                // Strict Guard: ONLY inject automation when on the developer dashboard, NEVER on accounts.spotify.com
+                if (url != null && url.contains("developer.spotify.com/dashboard")) {
+                    injectAutomationScript(force = false)
+                }
             }
         }
 
@@ -133,6 +141,12 @@ class SpotifySetupActivity : AppCompatActivity() {
 
         val script = """
             (function() {
+                // Strict Guard: Abort immediately if on login or accounts page
+                if (!window.location.hostname.includes("developer.spotify.com") || 
+                    !window.location.pathname.includes("/dashboard")) {
+                    return;
+                }
+
                 if (window.__hujjify_automation_active && !$force) return;
                 window.__hujjify_automation_active = true;
 
@@ -265,10 +279,15 @@ class SpotifySetupActivity : AppCompatActivity() {
                         }
                     }
 
-                    // 4. Fill App Creation Form
-                    const nameInput = document.querySelector('input[name="name"]') || 
-                                      document.querySelector('input[id*="name"]') ||
-                                      document.querySelector('input[placeholder*="App name"]');
+                    // 4. Fill App Creation Form (Only inside dialog or form on developer dashboard)
+                    const modal = document.querySelector('form') || 
+                                  document.querySelector('[role="dialog"]') || 
+                                  document.querySelector('[aria-modal="true"]');
+                    if (!modal) return;
+
+                    const nameInput = modal.querySelector('input[name="name"]') || 
+                                      modal.querySelector('input[id="name"]') ||
+                                      modal.querySelector('input[placeholder*="App name"]');
                     if (nameInput) {
                         if (nameInput.value !== APP_NAME) {
                             nameInput.value = APP_NAME;
