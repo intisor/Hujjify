@@ -69,6 +69,12 @@
             android:label="Lyrics &amp; Stance Audit"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".SanctuaryPlaylistActivity"
+            android:exported="false"
+            android:label="Sanctuary Playlists"
+            android:parentActivityName=".MainActivity" />
+
         <service
             android:name=".AlifyMonitorService"
             android:exported="false"

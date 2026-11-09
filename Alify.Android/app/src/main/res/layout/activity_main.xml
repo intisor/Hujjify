@@ -43,6 +43,16 @@
             </LinearLayout>
 
             <ImageButton
+                android:id="@+id/btnSanctuaryHeader"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Sanctuary Playlists"
+                android:padding="8dp"
+                android:src="@drawable/ic_sanctuary_playlist"
+                app:tint="@color/spotify_green" />
+
+            <ImageButton
                 android:id="@+id/btnSettings"
                 android:layout_width="38dp"
                 android:layout_height="38dp"
@@ -712,6 +722,20 @@
             android:textStyle="bold"
             android:visibility="gone"
             app:cornerRadius="22dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSanctifyPlaylists"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:text="🛡️ Sanctify Playlists (Clone &amp; Clean)"
+            android:textColor="@color/spotify_green"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:cornerRadius="22dp"
+            app:strokeColor="@color/spotify_green" />
 
     </LinearLayout>
 </ScrollView>

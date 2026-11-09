@@ -142,6 +142,17 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        // Sanctuary Playlists Navigation
+        val openSanctuaryPlaylists = {
+            if (!authManager.isConnected()) {
+                Toast.makeText(this, "Connect Spotify first to sanctify playlists", Toast.LENGTH_SHORT).show()
+            } else {
+                startActivity(Intent(this, SanctuaryPlaylistActivity::class.java))
+            }
+        }
+        binding.btnSanctuaryHeader.setOnClickListener { openSanctuaryPlaylists() }
+        binding.btnSanctifyPlaylists.setOnClickListener { openSanctuaryPlaylists() }
+
         binding.btnAutoLinkSpotify.setOnClickListener {
             spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
         }
@@ -308,6 +319,7 @@ class MainActivity : AppCompatActivity() {
             binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_green))
             binding.btnLogin.text = "Disconnect Spotify"
             binding.btnToggleProtection.visibility = View.VISIBLE
+            binding.btnSanctifyPlaylists.visibility = View.VISIBLE
 
             if (AlifyMonitorService.isRunning) {
                 binding.btnToggleProtection.text = "Pause Protection"
@@ -321,6 +333,7 @@ class MainActivity : AppCompatActivity() {
             binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
             binding.btnLogin.text = "Connect with Spotify"
             binding.btnToggleProtection.visibility = View.GONE
+            binding.btnSanctifyPlaylists.visibility = View.GONE
             binding.tvCurrentTrack.text = "No track playing"
             binding.tvCurrentArtist.text = if (hasClientId) "Connect Spotify to start monitoring" else "Configure Spotify Developer Client ID first"
             binding.tvSafetyBadge.visibility = View.GONE

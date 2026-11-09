@@ -103,6 +103,15 @@ class LyricsActivity : AppCompatActivity() {
         binding.tvLyricsTrackTitle.text = trackName
         binding.tvLyricsArtist.text = artistName
 
+        binding.btnAiDeconstruct.setOnClickListener {
+            if (binding.cardAiDeconstruct.visibility == View.VISIBLE) {
+                binding.cardAiDeconstruct.visibility = View.GONE
+            } else {
+                binding.cardAiDeconstruct.visibility = View.VISIBLE
+                deconstructTrackMeaning()
+            }
+        }
+
         binding.tvLyricsStatusBadge.setOnClickListener {
             showVerdictOverrideDialog(selectedLine = null)
         }
@@ -459,6 +468,57 @@ class LyricsActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .show()
         }
+
+    private fun deconstructTrackMeaning() {
+        binding.pbDeconstructLoading.visibility = View.VISIBLE
+        binding.tvDeconstructContent.text = "Deconstructing song themes, metaphors, and cultural idioms..."
+
+        val filterEngine = FilterEngine.fromPreferences(this)
+        val profileName = when (filterEngine.profile) {
+            0 -> "Islamic"
+            1 -> "Christian"
+            2 -> "Family Safe"
+            else -> "Conscious"
+        }
+
+        val prompt = """
+            You are an expert musicologist and cultural analyst.
+            Track: "$currentTrackName" by "$currentArtistName"
+            Listener Ethos Profile: $profileName
+            Lyrics:
+            ${currentLyrics?.take(1500) ?: "No lyrics indexed"}
+
+            Provide a clear, objective 2-3 sentence breakdown:
+            1. The true artistic meaning, themes, and cultural slang/metaphors used in this song.
+            2. How it aligns or contrasts with the $profileName conscious listening ethos.
+            Keep it concise, thoughtful, and direct. No preamble or markdown bolding.
+        """.trimIndent()
+
+        lifecycleScope.launch {
+            val breakdown = withContext(Dispatchers.IO) {
+                try {
+                    val key = filterEngine.geminiApiKey
+                    val keys = filterEngine.buildProviderKeyWaterfall(key)
+                    val primaryKey = keys.firstOrNull() ?: ""
+                    if (primaryKey.isBlank()) {
+                        "Please configure an AI API Key in Settings to enable deep lyrical deconstruction."
+                    } else {
+                        val response = filterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+                        if (!response.isNullOrBlank()) {
+                            response.trim()
+                        } else {
+                            "Unable to analyze track themes at this moment. Please try again."
+                        }
+                    }
+                } catch (e: Exception) {
+                    "Analysis error: ${e.message}"
+                }
+            }
+
+            binding.pbDeconstructLoading.visibility = View.GONE
+            binding.tvDeconstructContent.text = breakdown
+        }
+    }
 
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
