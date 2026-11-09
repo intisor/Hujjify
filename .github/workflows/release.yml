@@ -110,6 +110,9 @@ jobs:
           files: |
             final-release/Hujjify.apk
             final-release/Alify-Windows-x64.zip
+            final-release/**/*.apk
+            final-release/**/*.zip
+          fail_on_unmatched_files: false
           generate_release_notes: true
           draft: false
           prerelease: false
