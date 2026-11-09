@@ -49,7 +49,7 @@ class SettingsActivity : AppCompatActivity() {
             val clientId = result.data?.getStringExtra(SpotifySetupActivity.EXTRA_CLIENT_ID)
                 ?: SpotifyAuthManager(this).customClientId
             if (!clientId.isNullOrBlank()) {
-                binding.etCustomClientId.setText(clientId)
+                binding.etSpotifyClientId.setText(clientId)
                 Toast.makeText(this, "Client ID loaded into settings!", Toast.LENGTH_SHORT).show()
             }
         }

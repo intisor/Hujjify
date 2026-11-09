@@ -575,7 +575,7 @@ object StreakKit {
      */
     fun evaluateContrastNudge(
         context: Context,
-        userId: String,
+        userId: String = "user_default",
         neglectedRuleSlug: String,
         triggerAction: String,
         triggerLabel: String,

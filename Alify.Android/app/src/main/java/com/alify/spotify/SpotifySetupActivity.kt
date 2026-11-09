@@ -334,7 +334,7 @@ class SpotifySetupActivity : AppCompatActivity() {
         isExtracted = true
 
         authManager.customClientId = clientId
-        PersistentVaultManager.saveCredentials(this, authManager)
+        PersistentVaultManager.saveVault(this)
 
         binding.tvStatusMessage.text = "✅ Client ID Captured: $clientId"
         Toast.makeText(this, "⚡ Hujjify App Linked Successfully!", Toast.LENGTH_LONG).show()

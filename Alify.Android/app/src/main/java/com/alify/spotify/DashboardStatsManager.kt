@@ -82,9 +82,10 @@ object DashboardStatsManager {
             com.streakkit.StreakKit.consumeHeart(count = 1)
             com.streakkit.StreakKit.evaluateContrastNudge(
                 context = context,
+                userId = "user_default",
                 neglectedRuleSlug = "hujjify_playback",
-                triggerVerb = "listening to flagged music ($title)",
-                triggerCategory = "MEDIA_LEISURE"
+                triggerAction = "FLAGGED_PLAYBACK",
+                triggerLabel = "listening to flagged music ($title)"
             )
         }
 
