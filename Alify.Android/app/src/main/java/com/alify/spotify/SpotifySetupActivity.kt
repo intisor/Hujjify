@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.net.Uri
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
@@ -30,7 +34,7 @@ class SpotifySetupActivity : AppCompatActivity() {
         const val EXTRA_CLIENT_ID = "extra_client_id"
         private const val SPOTIFY_DASHBOARD_URL = "https://developer.spotify.com/dashboard"
         private const val CHROME_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+            "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.127 Mobile Safari/537.36"
 
         fun createIntent(context: Context): Intent {
             return Intent(context, SpotifySetupActivity::class.java)
@@ -48,9 +52,43 @@ class SpotifySetupActivity : AppCompatActivity() {
         setupWebView()
     }
 
+    override fun onResume() {
+        super.onResume()
+        checkClipboardForClientId()
+    }
+
+    private fun checkClipboardForClientId() {
+        if (isExtracted) return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
+        val clip = clipboard.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0).text?.toString()?.trim() ?: ""
+            if (text.matches(Regex("^[0-9a-f]{32}$", RegexOption.IGNORE_CASE))) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Spotify Client ID Detected")
+                    .setMessage("Found Client ID in clipboard:\n\n$text\n\nLink this app now?")
+                    .setPositiveButton("Link App") { _, _ ->
+                        handleClientIdCaptured(text)
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        }
+    }
+
     private fun setupToolbar() {
         binding.btnBack.setOnClickListener {
             finish()
+        }
+
+        binding.btnOpenBrowser.setOnClickListener {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPOTIFY_DASHBOARD_URL))
+                startActivity(intent)
+                Toast.makeText(this, "Opened Spotify Dashboard in Chrome. Copy your Client ID and return here.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Could not open browser: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnForceExtract.setOnClickListener {
@@ -84,6 +122,9 @@ class SpotifySetupActivity : AppCompatActivity() {
 
         binding.webView.addJavascriptInterface(WebAppBridge(), "HujjifyBridge")
 
+        binding.webView.settings.setSupportMultipleWindows(true)
+        binding.webView.settings.javaScriptCanOpenWindowsAutomatically = true
+
         binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 if (newProgress < 100) {
@@ -92,6 +133,34 @@ class SpotifySetupActivity : AppCompatActivity() {
                 } else {
                     binding.progressBar.visibility = View.GONE
                 }
+            }
+
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: android.os.Message?
+            ): Boolean {
+                if (resultMsg == null) return false
+                val newWebView = WebView(this@SpotifySetupActivity).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.userAgentString = CHROME_USER_AGENT
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                            val nextUrl = request?.url?.toString() ?: ""
+                            if (nextUrl.contains("developer.spotify.com") || nextUrl.contains("accounts.spotify.com")) {
+                                binding.webView.loadUrl(nextUrl)
+                                return true
+                            }
+                            return false
+                        }
+                    }
+                }
+                val transport = resultMsg.obj as? WebView.WebViewTransport
+                transport?.webView = newWebView
+                resultMsg.sendToTarget()
+                return true
             }
         }
 
@@ -122,16 +191,21 @@ class SpotifySetupActivity : AppCompatActivity() {
         if (url == null || isExtracted) return
 
         when {
-            url.contains("accounts.spotify.com/login") -> {
-                binding.tvStatusMessage.text = "Log in to Spotify. Hujjify will automate the dashboard right after."
+            url.contains("accounts.spotify.com") -> {
+                binding.tvStatusMessage.text = "Log into Spotify. If using Google/Apple sign-in, tap 'Open in Chrome' above."
                 binding.tvHeaderSubtitle.text = "Awaiting Spotify Login"
             }
             url.contains("developer.spotify.com/dashboard") -> {
                 binding.tvStatusMessage.text = "Automating: creating 'Hujjify' app with 'hujjify://callback'..."
                 binding.tvHeaderSubtitle.text = "Automating Dashboard..."
             }
+            url.contains("developer.spotify.com") -> {
+                binding.tvStatusMessage.text = "Loading Spotify Developer Portal..."
+                binding.tvHeaderSubtitle.text = "Developer Portal"
+            }
             else -> {
-                binding.tvStatusMessage.text = "Loading: $url"
+                binding.tvStatusMessage.text = "Connecting to Spotify services..."
+                binding.tvHeaderSubtitle.text = "Connecting..."
             }
         }
     }

@@ -17,8 +17,8 @@
 
         <ImageButton
             android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
             android:src="@drawable/ic_arrow_back"
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:text="Spotify App Auto-Link"
                 android:textColor="@color/spotify_light_text"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -49,13 +49,24 @@
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenBrowser"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:paddingHorizontal="4dp"
+            android:text="Open in Chrome"
+            android:textColor="@color/accent_blue"
+            android:textSize="11sp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnForceExtract"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="Auto-Fill Now"
+            android:paddingHorizontal="4dp"
+            android:text="Auto-Fill"
             android:textColor="@color/spotify_green"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -69,7 +80,7 @@
         android:indeterminateTint="@color/spotify_green"
         android:progressTint="@color/spotify_green" />
 
-    <!-- Live Status Banner -->
+    <!-- Live Status Banner (Clamped to max 2 lines so it never blocks the view) -->
     <LinearLayout
         android:id="@+id/bannerStatus"
         android:layout_width="match_parent"
@@ -84,7 +95,9 @@
             android:id="@+id/tvStatusMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Log into Spotify if prompted. Hujjify will automatically create your app and capture your Client ID."
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="Log into Spotify. If using Google/Apple sign-in, tap 'Open in Chrome' above."
             android:textColor="@color/spotify_light_text"
             android:textSize="12sp" />
     </LinearLayout>

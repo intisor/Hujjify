@@ -66,6 +66,26 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        checkClipboardForClientId()
+    }
+
+    private fun checkClipboardForClientId() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
+        val clip = clipboard.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0).text?.toString()?.trim() ?: ""
+            if (text.matches(Regex("^[0-9a-f]{32}$", RegexOption.IGNORE_CASE))) {
+                val current = binding.etSpotifyClientId.text?.toString()?.trim() ?: ""
+                if (current != text) {
+                    binding.etSpotifyClientId.setText(text)
+                    Toast.makeText(this, "Pasted Spotify Client ID from clipboard", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
