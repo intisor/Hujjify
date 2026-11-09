@@ -208,7 +208,7 @@ class LrclibClient {
 
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Hujjify-Android/1.4 (https://github.com/intisor/Alify)")
+            .header("User-Agent", "Ujify-Android/2.0 (https://github.com/intisor/Alify)")
             .build()
 
         return try {
@@ -230,7 +230,7 @@ class LrclibClient {
 
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Hujjify-Android/1.4 (https://github.com/intisor/Alify)")
+            .header("User-Agent", "Ujify-Android/2.0 (https://github.com/intisor/Alify)")
             .build()
 
         return try {
@@ -395,7 +395,7 @@ class LrclibClient {
         val url = "https://api.lyrics.ovh/v1/$artist/$track".toHttpUrlOrNull() ?: return null
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Hujjify-Android/1.4")
+            .header("User-Agent", "Ujify-Android/2.0")
             .build()
 
         return try {
@@ -473,9 +473,9 @@ class LrclibClient {
                     val request = Request.Builder()
                         .url(url)
                         .header("Authorization", "Bearer $apiKey")
-                        .header("User-Agent", "Hujjify-Android/1.4")
+                        .header("User-Agent", "Ujify-Android/2.0")
                         .header("HTTP-Referer", "https://github.com/intisor/Alify")
-                        .header("X-Title", "Hujjify Lyrics Scraper")
+                        .header("X-Title", "Ujify Lyrics Scraper")
                         .post(payload.toString().toRequestBody("application/json".toMediaType()))
                         .build()
 

@@ -165,11 +165,11 @@ public class HttpGeminiModelClient : IGeminiModelClient
                 Content = new StringContent(chatJson, Encoding.UTF8, "application/json")
             };
             chatReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            chatReq.Headers.TryAddWithoutValidation("User-Agent", "Hujjify/1.4");
+            chatReq.Headers.TryAddWithoutValidation("User-Agent", "Ujify/2.0");
             if (isOpenRouter)
             {
                 chatReq.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/intisor/Alify");
-                chatReq.Headers.TryAddWithoutValidation("X-Title", "Hujjify Music Filter");
+                chatReq.Headers.TryAddWithoutValidation("X-Title", "Ujify Music Filter");
             }
 
             using var chatResp = await _httpClient.SendAsync(chatReq, cancellationToken);

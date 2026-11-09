@@ -277,7 +277,7 @@ object SilentCorpusHarvester {
 
             val req = Request.Builder()
                 .url(endpoint)
-                .header("User-Agent", "Hujjify-Android/1.4")
+                .header("User-Agent", "Ujify-Android/2.0")
                 .post(body)
                 .build()
 
@@ -302,7 +302,7 @@ object SilentCorpusHarvester {
                     .url("https://api.github.com/repos/intisor/Alify/dispatches")
                     .header("Authorization", "Bearer $ghToken")
                     .header("Accept", "application/vnd.github+json")
-                    .header("User-Agent", "Hujjify-Android/1.4")
+                    .header("User-Agent", "Ujify-Android/2.0")
                     .post(dispatchBody)
                     .build()
 

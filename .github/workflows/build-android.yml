@@ -53,12 +53,12 @@ jobs:
       - name: Locate and Rename APK
         run: |
           mkdir -p artifacts
-          cp Alify.Android/app/build/outputs/apk/release/*.apk artifacts/Hujjify.apk || cp Alify.Android/app/build/outputs/apk/release/app-release.apk artifacts/Hujjify.apk
-          echo "APK successfully built at artifacts/Hujjify.apk"
+          cp Alify.Android/app/build/outputs/apk/release/*.apk artifacts/Ujify.apk || cp Alify.Android/app/build/outputs/apk/release/app-release.apk artifacts/Ujify.apk
+          echo "APK successfully built at artifacts/Ujify.apk"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hujjify-Android-APK
-          path: artifacts/Hujjify.apk
+          name: Ujify-Android-APK
+          path: artifacts/Ujify.apk
           retention-days: 30

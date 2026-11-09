@@ -32,7 +32,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Spotify OAuth Redirect Intent Filter (Supports both hujjify://callback and alify://callback) -->
+            <!-- Spotify OAuth Redirect Intent Filter (Supports ujify://callback, hujjify://callback, and alify://callback) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="callback"
+                    android:scheme="ujify" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -84,7 +92,7 @@
         <receiver
             android:name="com.streakkit.StreakWidgetProvider"
             android:exported="true"
-            android:label="Hujjify Habit Streak">
+            android:label="Ujify Habit Streak">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

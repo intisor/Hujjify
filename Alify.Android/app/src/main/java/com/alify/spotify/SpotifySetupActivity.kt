@@ -120,6 +120,7 @@ class SpotifySetupActivity : AppCompatActivity() {
             userAgentString = CHROME_USER_AGENT
         }
 
+        binding.webView.addJavascriptInterface(WebAppBridge(), "UjifyBridge")
         binding.webView.addJavascriptInterface(WebAppBridge(), "HujjifyBridge")
 
         binding.webView.settings.setSupportMultipleWindows(true)
@@ -196,7 +197,7 @@ class SpotifySetupActivity : AppCompatActivity() {
                 binding.tvHeaderSubtitle.text = "Awaiting Spotify Login"
             }
             url.contains("developer.spotify.com/dashboard") -> {
-                binding.tvStatusMessage.text = "Automating: creating 'Hujjify' app with 'hujjify://callback'..."
+                binding.tvStatusMessage.text = "Automating: creating 'Ujify' app with 'ujify://callback'..."
                 binding.tvHeaderSubtitle.text = "Automating Dashboard..."
             }
             url.contains("developer.spotify.com") -> {
@@ -224,8 +225,8 @@ class SpotifySetupActivity : AppCompatActivity() {
                 if (window.__hujjify_automation_active && !$force) return;
                 window.__hujjify_automation_active = true;
 
-                const APP_NAME = "Hujjify";
-                const REDIRECT_URI = "hujjify://callback";
+                const APP_NAME = "Ujify";
+                const REDIRECT_URI = "ujify://callback";
                 const REDIRECT_URI_DESKTOP = "http://127.0.0.1:5001/callback";
 
                 // Monkey patch fetch & XHR to intercept Spotify dashboard API responses
@@ -281,8 +282,8 @@ class SpotifySetupActivity : AppCompatActivity() {
                 }
 
                 function notifyClientId(id) {
-                    if (window.HujjifyBridge && /^[0-9a-f]{32}$/i.test(id)) {
-                        window.HujjifyBridge.postClientId(id);
+                    if ((window.UjifyBridge || window.HujjifyBridge) && /^[0-9a-f]{32}$/i.test(id)) {
+                        (window.UjifyBridge || window.HujjifyBridge).postClientId(id);
                     }
                 }
 
@@ -331,11 +332,11 @@ class SpotifySetupActivity : AppCompatActivity() {
                     // 3. If on /dashboard and existing Hujjify / Alify app exists, open it
                     if (currentUrl.endsWith('/dashboard') || currentUrl.endsWith('/dashboard/')) {
                         const appLinks = Array.from(document.querySelectorAll('a, button, div')).find(
-                            el => (el.textContent.trim().toLowerCase() === 'hujjify' || el.textContent.trim().toLowerCase() === 'alify') &&
+                            el => (el.textContent.trim().toLowerCase() === 'ujify' || el.textContent.trim().toLowerCase() === 'hujjify' || el.textContent.trim().toLowerCase() === 'alify') &&
                                   el.closest('[data-testid], [class*="app-card"], tr, li')
                         );
                         if (appLinks) {
-                            if (window.HujjifyBridge) window.HujjifyBridge.updateStatus("Found existing Hujjify app! Opening...");
+                            if ((window.UjifyBridge || window.HujjifyBridge)) (window.UjifyBridge || window.HujjifyBridge).updateStatus("Found existing Hujjify app! Opening...");
                             appLinks.click();
                             return;
                         }
@@ -347,7 +348,7 @@ class SpotifySetupActivity : AppCompatActivity() {
                                                    b.textContent.trim().toLowerCase().includes('create an app')
                                           );
                         if (createBtn) {
-                            if (window.HujjifyBridge) window.HujjifyBridge.updateStatus("Creating new Hujjify Spotify app...");
+                            if ((window.UjifyBridge || window.HujjifyBridge)) (window.UjifyBridge || window.HujjifyBridge).updateStatus("Creating new Ujify Spotify app...");
                             createBtn.click();
                             return;
                         }
@@ -410,7 +411,7 @@ class SpotifySetupActivity : AppCompatActivity() {
                                                      b.textContent.trim().toLowerCase() === 'create'
                                             );
                             if (saveBtn && !saveBtn.disabled) {
-                                if (window.HujjifyBridge) window.HujjifyBridge.updateStatus("Saving Hujjify app details...");
+                                if ((window.UjifyBridge || window.HujjifyBridge)) (window.UjifyBridge || window.HujjifyBridge).updateStatus("Saving Ujify app details...");
                                 saveBtn.click();
                             }
                         }, 500);
@@ -430,7 +431,7 @@ class SpotifySetupActivity : AppCompatActivity() {
         PersistentVaultManager.saveVault(this)
 
         binding.tvStatusMessage.text = "Client ID Captured: $clientId"
-        Toast.makeText(this, "Hujjify App Linked Successfully!", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Ujify App Linked Successfully!", Toast.LENGTH_LONG).show()
 
         val resultIntent = Intent().apply {
             putExtra(EXTRA_CLIENT_ID, clientId)

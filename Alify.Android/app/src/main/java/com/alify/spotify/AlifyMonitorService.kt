@@ -111,7 +111,7 @@ class AlifyMonitorService : Service() {
         filterEngine = FilterEngine.fromPreferences(this)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Active - Hujjify AI Protection On"))
+        startForeground(NOTIFICATION_ID, buildNotification("Active - Ujify AI Protection On"))
         isRunning = true
     }
 
@@ -698,7 +698,7 @@ class AlifyMonitorService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Hujjify Audio Protection")
+            .setContentTitle("Ujify Audio Protection")
             .setContentText(statusText)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(pendingIntent)

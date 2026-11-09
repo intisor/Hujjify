@@ -35,7 +35,7 @@ Spotify limits developer applications in development mode to a small whitelist o
      ```
    - For **Alify Android**:
      ```text
-     hujjify://callback
+     ujify://callback
      ```
    Click **Add** for each URI, then check the developer terms checkbox and click **Save**.
 

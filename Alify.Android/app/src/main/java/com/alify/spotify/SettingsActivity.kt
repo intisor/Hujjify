@@ -136,9 +136,9 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnCopyRedirectUri.setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Spotify Redirect URI", "hujjify://callback")
+            val clip = ClipData.newPlainText("Spotify Redirect URI", "ujify://callback")
             clipboard.setPrimaryClip(clip)
-            Toast.makeText(this, "Redirect URI copied: hujjify://callback", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Redirect URI copied: ujify://callback", Toast.LENGTH_SHORT).show()
         }
 
         // AI Provider Helper Links
@@ -293,7 +293,7 @@ class SettingsActivity : AppCompatActivity() {
                         } else {
                             MaterialAlertDialogBuilder(this@SettingsActivity)
                                 .setTitle("Up to Date")
-                                .setMessage("You are running the latest version of Hujjify (v$currentVersion).")
+                                .setMessage("You are running the latest version of Ujify (v$currentVersion).")
                                 .setPositiveButton("OK", null)
                                 .show()
                         }

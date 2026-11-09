@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName.set("Hujjify")
+    archivesName.set("Ujify")
 }
 
 android {
@@ -15,10 +15,10 @@ android {
         applicationId = "com.alify.spotify"
         minSdk = 26
         targetSdk = 34
-        versionCode = 45
-        versionName = "1.9.5"
+        versionCode = 46
+        versionName = "2.0.0"
 
-        manifestPlaceholders["redirectSchemeName"] = "hujjify"
+        manifestPlaceholders["redirectSchemeName"] = "ujify"
         manifestPlaceholders["redirectHostName"] = "callback"
     }
 

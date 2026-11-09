@@ -76,14 +76,14 @@ object DashboardStatsManager {
         // 1. Clean track -> advance streak + award +10 Daily XP
         // 2. Flagged track not skipped -> consume 1 Heart + evaluate Behavioral Contrast Nudge
         if (!isFlagged && !isSkipped) {
-            com.streakkit.StreakKit.ping(context, "hujjify_playback", value = 1)
+            com.streakkit.StreakKit.ping(context, "ujify_playback", value = 1)
             com.streakkit.StreakKit.addXp(amount = 10, unitId = "unit_1")
         } else if (isFlagged && !isSkipped) {
             com.streakkit.StreakKit.consumeHeart(count = 1)
             com.streakkit.StreakKit.evaluateContrastNudge(
                 context = context,
                 userId = "user_default",
-                neglectedRuleSlug = "hujjify_playback",
+                neglectedRuleSlug = "ujify_playback",
                 triggerAction = "FLAGGED_PLAYBACK",
                 triggerLabel = "listening to flagged music ($title)"
             )

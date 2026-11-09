@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
             context = this,
             rules = listOf(
                 com.streakkit.StreakRule(
-                    slug = "hujjify_playback",
+                    slug = "ujify_playback",
                     name = "Conscious Audio Streak",
                     target = 1,
                     cadence = "DAILY",
@@ -79,12 +79,12 @@ class MainActivity : AppCompatActivity() {
             )
         )
         com.streakkit.StreakKit.onStateChange { updateDashboardUI() }
-        com.streakkit.StreakKit.ping(this, "hujjify_playback", value = 0)
+        com.streakkit.StreakKit.ping(this, "ujify_playback", value = 0)
         com.streakkit.StreakNotificationManager.createNotificationChannel(this)
 
         // If launched via Home Screen Widget or Urgent Notification, immediately open Streak Modal
         if (intent?.getBooleanExtra("OPEN_STREAKKIT_EMBED", false) == true) {
-            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+            com.streakkit.StreakKit.showModal(this, "ujify_playback")
         }
 
         setupUI()
@@ -102,13 +102,13 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         handleRedirectIntent(intent)
         if (intent.getBooleanExtra("OPEN_STREAKKIT_EMBED", false)) {
-            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+            com.streakkit.StreakKit.showModal(this, "ujify_playback")
         }
     }
 
     private fun handleRedirectIntent(intent: Intent?) {
         val uri = intent?.data ?: return
-        if ((uri.scheme == "hujjify" || uri.scheme == "alify") && uri.host == "callback") {
+        if ((uri.scheme == "ujify" || uri.scheme == "hujjify" || uri.scheme == "alify") && uri.host == "callback") {
             val error = uri.getQueryParameter("error")
             if (!error.isNullOrBlank()) {
                 val msg = if (error == "access_denied") "Spotify authorization was canceled." else "Spotify error: $error"
@@ -130,12 +130,12 @@ class MainActivity : AppCompatActivity() {
     private fun setupUI() {
         // StreakKit Drop-In Modal (Tap -> Streak Modal, Long-Press -> Duolingo Winding Path UI)
         binding.cardStreak.setOnClickListener {
-            com.streakkit.StreakKit.showModal(this, "hujjify_playback")
+            com.streakkit.StreakKit.showModal(this, "ujify_playback")
         }
         binding.cardStreak.setOnLongClickListener {
             com.streakkit.StreakKit.showDuolingoPath(
                 activity = this,
-                ruleSlug = "hujjify_playback",
+                ruleSlug = "ujify_playback",
                 flag = "Music",
                 unitTitle = "Conscious Listening",
                 unitSubtitle = "Audit clean tracks & guard your ears"
@@ -333,7 +333,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Spotify Client ID Required")
             .setMessage(
                 "Spotify requires each user to have their own free Developer Client ID so you have personal, unlimited access without developer whitelist restrictions.\n\n" +
-                "Redirect URI: hujjify://callback\n\n" +
+                "Redirect URI: ujify://callback\n\n" +
                 "Tap '1-Tap Auto-Link' to automatically log in, create the app, and configure your keys in seconds."
             )
             .setPositiveButton("1-Tap Auto-Link") { _, _ ->

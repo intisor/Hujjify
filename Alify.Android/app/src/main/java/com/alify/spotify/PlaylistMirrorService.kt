@@ -245,7 +245,7 @@ object PlaylistMirrorService {
         try {
             val body = JSONObject().apply {
                 put("name", name)
-                put("description", "Ethically verified clean mirror created by Hujjify AI Sentinel.")
+                put("description", "Ethically verified clean mirror created by Ujify AI Sentinel.")
                 put("public", false)
             }.toString().toRequestBody("application/json".toMediaType())
 

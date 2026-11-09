@@ -138,9 +138,9 @@ class FilterEngine(
 
                 val reqBuilder = Request.Builder()
                     .url(url)
-                    .header("User-Agent", "Hujjify-Android/1.4")
+                    .header("User-Agent", "Ujify-Android/2.0")
                     .header("HTTP-Referer", "https://github.com/intisor/Alify")
-                    .header("X-Title", "Hujjify Music Filter")
+                    .header("X-Title", "Ujify Music Filter")
 
                 if (apiKey.isNotBlank()) {
                     reqBuilder.header("Authorization", "Bearer $apiKey")
@@ -205,7 +205,7 @@ class FilterEngine(
                     .header("x-api-key", apiKey)
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json")
-                    .header("User-Agent", "Hujjify-Android/1.4")
+                    .header("User-Agent", "Ujify-Android/2.0")
                     .post(payload.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 

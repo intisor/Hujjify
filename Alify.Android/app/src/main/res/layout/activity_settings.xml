@@ -137,7 +137,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="monospace"
-                        android:text="hujjify://callback"
+                        android:text="ujify://callback"
                         android:textColor="@color/spotify_green"
                         android:textSize="12sp"
                         android:textStyle="bold" />

@@ -19,7 +19,7 @@ class SpotifyAuthManager(private val context: Context) {
     private val prefs = context.getSharedPreferences("alify_spotify_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        const val REDIRECT_URI = "hujjify://callback"
+        const val REDIRECT_URI = "ujify://callback"
         const val SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private"
     }
 
