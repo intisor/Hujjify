@@ -476,10 +476,10 @@ class LyricsActivity : AppCompatActivity() {
 
         val filterEngine = FilterEngine.fromPreferences(this)
         val profileName = when (filterEngine.profile) {
-            0 -> "Islamic"
-            1 -> "Christian"
-            2 -> "Family Safe"
-            else -> "Conscious"
+            EthosProfile.ISLAMIC -> "Islamic"
+            EthosProfile.CHRISTIAN -> "Christian"
+            EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
+            EthosProfile.GENERAL -> "Conscious"
         }
 
         val prompt = """
@@ -499,12 +499,12 @@ class LyricsActivity : AppCompatActivity() {
             val breakdown = withContext(Dispatchers.IO) {
                 try {
                     val key = filterEngine.geminiApiKey
-                    val keys = filterEngine.buildProviderKeyWaterfall(key)
+                    val keys = FilterEngine.buildProviderKeyWaterfall(key)
                     val primaryKey = keys.firstOrNull() ?: ""
                     if (primaryKey.isBlank()) {
                         "Please configure an AI API Key in Settings to enable deep lyrical deconstruction."
                     } else {
-                        val response = filterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+                        val response = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
                         if (!response.isNullOrBlank()) {
                             response.trim()
                         } else {

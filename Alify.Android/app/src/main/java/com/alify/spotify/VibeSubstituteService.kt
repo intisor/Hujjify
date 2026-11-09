@@ -66,7 +66,7 @@ object VibeSubstituteService {
             """.trimIndent()
 
             val aiKey = filterEngine.geminiApiKey
-            val keys = filterEngine.buildProviderKeyWaterfall(aiKey)
+            val keys = FilterEngine.buildProviderKeyWaterfall(aiKey)
             val primaryKey = keys.firstOrNull() ?: ""
 
             if (primaryKey.isBlank()) {
@@ -74,7 +74,7 @@ object VibeSubstituteService {
                 return@withContext null
             }
 
-            val rawResponse = filterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
             if (rawResponse.isNullOrBlank()) {
                 Log.w(TAG, "Empty response from AI for vibe substitution")
                 return@withContext null

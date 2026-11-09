@@ -106,12 +106,128 @@ class FilterEngine(
                 analysisMode = analysisMode
             )
         }
-    }
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(3, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .build()
+        val httpClient = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .build()
+
+        fun executeLlmWaterfallRequest(prompt: String, apiKey: String): String? {
+            val isGroq = apiKey.startsWith("gsk_")
+            val isOpenRouter = apiKey.startsWith("sk-")
+
+            if (isGroq || isOpenRouter) {
+                val url = if (isGroq) {
+                    "https://api.groq.com/openai/v1/chat/completions"
+                } else {
+                    "https://openrouter.ai/api/v1/chat/completions"
+                }
+                val models = if (isGroq) {
+                    // Latest October 2026 Groq active models
+                    listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b")
+                } else {
+                    listOf("openrouter/free")
+                }
+
+                for (model in models) {
+                    try {
+                        val payload = JSONObject().apply {
+                            put("model", model)
+                            put("messages", JSONArray().apply {
+                                put(JSONObject().apply {
+                                    put("role", "user")
+                                    put("content", prompt)
+                                })
+                            })
+                            put("temperature", 0.1)
+                        }
+
+                        val request = Request.Builder()
+                            .url(url)
+                            .header("Authorization", "Bearer $apiKey")
+                            .header("User-Agent", "Hujjify-Android/1.4")
+                            .header("HTTP-Referer", "https://github.com/intisor/Alify")
+                            .header("X-Title", "Hujjify Music Filter")
+                            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                            .build()
+
+                        httpClient.newCall(request).execute().use { response ->
+                            if (!response.isSuccessful) {
+                                Log.w(TAG, "Provider $model returned HTTP ${response.code}")
+                                if (response.code == 429) {
+                                    // Key rate-limited: exit early to let competing parallel provider win immediately
+                                    return null
+                                }
+                                return@use
+                            }
+                            val body = response.body?.string() ?: return@use
+                            val root = JSONObject(body)
+                            val choices = root.optJSONArray("choices") ?: return@use
+                            if (choices.length() > 0) {
+                                val content = choices.getJSONObject(0).optJSONObject("message")?.optString("content")
+                                if (!content.isNullOrBlank()) {
+                                    return content
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error calling $model: ${e.message}")
+                    }
+                }
+            } else {
+                // Google Gemini October 2026 active models
+                val models = listOf("gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite")
+                for (model in models) {
+                    try {
+                        val jsonPayload = JSONObject().apply {
+                            put("contents", JSONArray().apply {
+                                put(JSONObject().apply {
+                                    put("parts", JSONArray().apply {
+                                        put(JSONObject().apply {
+                                            put("text", prompt)
+                                        })
+                                    })
+                                })
+                            })
+                        }
+
+                        val request = Request.Builder()
+                            .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                            .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
+                            .build()
+
+                        httpClient.newCall(request).execute().use { response ->
+                            if (!response.isSuccessful) {
+                                Log.w(TAG, "Gemini $model returned HTTP ${response.code}")
+                                if (response.code == 429) {
+                                    // Key rate-limited: exit early to let competing parallel provider win immediately
+                                    return null
+                                }
+                                return@use
+                            }
+                            val body = response.body?.string() ?: return@use
+                            val root = JSONObject(body)
+                            val candidates = root.optJSONArray("candidates") ?: return@use
+                            if (candidates.length() > 0) {
+                                val text = candidates.getJSONObject(0)
+                                    .optJSONObject("content")
+                                    ?.optJSONArray("parts")
+                                    ?.optJSONObject(0)
+                                    ?.optString("text")
+                                if (!text.isNullOrBlank()) {
+                                    return text
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error calling Gemini $model: ${e.message}")
+                    }
+                }
+            }
+
+            return null
+        }
+    }
 
     /* REGEX HEURISTICS COMMENTED OFF - Pure LLM Semantic Evaluation is authoritative
     private val violencePatterns = listOf(...)
@@ -333,122 +449,6 @@ class FilterEngine(
                 isVerifiedByAi = !isUnverified
             )
         }
-    }
-
-    private fun executeLlmWaterfallRequest(prompt: String, apiKey: String): String? {
-        val isGroq = apiKey.startsWith("gsk_")
-        val isOpenRouter = apiKey.startsWith("sk-")
-
-        if (isGroq || isOpenRouter) {
-            val url = if (isGroq) {
-                "https://api.groq.com/openai/v1/chat/completions"
-            } else {
-                "https://openrouter.ai/api/v1/chat/completions"
-            }
-            val models = if (isGroq) {
-                // Latest October 2026 Groq active models
-                listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b")
-            } else {
-                listOf("openrouter/free")
-            }
-
-            for (model in models) {
-                try {
-                    val payload = JSONObject().apply {
-                        put("model", model)
-                        put("messages", JSONArray().apply {
-                            put(JSONObject().apply {
-                                put("role", "user")
-                                put("content", prompt)
-                            })
-                        })
-                        put("temperature", 0.1)
-                    }
-
-                    val request = Request.Builder()
-                        .url(url)
-                        .header("Authorization", "Bearer $apiKey")
-                        .header("User-Agent", "Hujjify-Android/1.4")
-                        .header("HTTP-Referer", "https://github.com/intisor/Alify")
-                        .header("X-Title", "Hujjify Music Filter")
-                        .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                        .build()
-
-                    httpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            Log.w(TAG, "Provider $model returned HTTP ${response.code}")
-                            if (response.code == 429) {
-                                // Key rate-limited: exit early to let competing parallel provider win immediately
-                                return null
-                            }
-                            return@use
-                        }
-                        val body = response.body?.string() ?: return@use
-                        val root = JSONObject(body)
-                        val choices = root.optJSONArray("choices") ?: return@use
-                        if (choices.length() > 0) {
-                            val content = choices.getJSONObject(0).optJSONObject("message")?.optString("content")
-                            if (!content.isNullOrBlank()) {
-                                return content
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error calling $model: ${e.message}")
-                }
-            }
-        } else {
-            // Google Gemini October 2026 active models
-            val models = listOf("gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite")
-            for (model in models) {
-                try {
-                    val jsonPayload = JSONObject().apply {
-                        put("contents", JSONArray().apply {
-                            put(JSONObject().apply {
-                                put("parts", JSONArray().apply {
-                                    put(JSONObject().apply {
-                                        put("text", prompt)
-                                    })
-                                })
-                            })
-                        })
-                    }
-
-                    val request = Request.Builder()
-                        .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
-                        .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
-                        .build()
-
-                    httpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            Log.w(TAG, "Gemini $model returned HTTP ${response.code}")
-                            if (response.code == 429) {
-                                // Key rate-limited: exit early to let competing parallel provider win immediately
-                                return null
-                            }
-                            return@use
-                        }
-                        val body = response.body?.string() ?: return@use
-                        val root = JSONObject(body)
-                        val candidates = root.optJSONArray("candidates") ?: return@use
-                        if (candidates.length() > 0) {
-                            val text = candidates.getJSONObject(0)
-                                .optJSONObject("content")
-                                ?.optJSONArray("parts")
-                                ?.optJSONObject(0)
-                                ?.optString("text")
-                            if (!text.isNullOrBlank()) {
-                                return text
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error calling Gemini $model: ${e.message}")
-                }
-            }
-        }
-
-        return null
     }
 
     private fun extractJsonObject(rawText: String): JSONObject? {

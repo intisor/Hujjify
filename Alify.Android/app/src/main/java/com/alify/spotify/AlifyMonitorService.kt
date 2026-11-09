@@ -431,10 +431,10 @@ class AlifyMonitorService : Service() {
                 val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
                 val enableVibeSwap = filterPrefs.getBoolean("enable_vibe_swap", true)
                 val profileName = when (filterEngine.profile) {
-                    0 -> "Islamic"
-                    1 -> "Christian"
-                    2 -> "Family Safe"
-                    else -> "Conscious"
+                    EthosProfile.ISLAMIC -> "Islamic"
+                    EthosProfile.CHRISTIAN -> "Christian"
+                    EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
+                    EthosProfile.GENERAL -> "Conscious"
                 }
 
                 for (i in 0 until countToPreAudit) {
@@ -556,10 +556,10 @@ class AlifyMonitorService : Service() {
 
         if (enableVibeSwap) {
             val profileName = when (filterEngine.profile) {
-                0 -> "Islamic"
-                1 -> "Christian"
-                2 -> "Family Safe"
-                else -> "Conscious"
+                EthosProfile.ISLAMIC -> "Islamic"
+                EthosProfile.CHRISTIAN -> "Christian"
+                EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
+                EthosProfile.GENERAL -> "Conscious"
             }
 
             scope.launch {

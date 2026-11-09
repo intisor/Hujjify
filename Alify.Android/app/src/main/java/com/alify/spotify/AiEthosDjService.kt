@@ -39,10 +39,10 @@ object AiEthosDjService {
             val tastePrompt = if (tasteContext.isNotBlank()) "\nListener's personal verified taste context: $tasteContext\nHarmonize with their preferred sonic aesthetic while matching the requested vibe.\n" else ""
 
             val profileName = when (filterEngine.profile) {
-                0 -> "Islamic"
-                1 -> "Christian"
-                2 -> "Family Safe"
-                else -> "Conscious"
+                EthosProfile.ISLAMIC -> "Islamic"
+                EthosProfile.CHRISTIAN -> "Christian"
+                EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
+                EthosProfile.GENERAL -> "Conscious"
             }
 
             val prompt = """
@@ -60,7 +60,7 @@ object AiEthosDjService {
             """.trimIndent()
 
             val aiKey = filterEngine.geminiApiKey
-            val keys = filterEngine.buildProviderKeyWaterfall(aiKey)
+            val keys = FilterEngine.buildProviderKeyWaterfall(aiKey)
             val primaryKey = keys.firstOrNull() ?: ""
 
             if (primaryKey.isBlank()) {
@@ -68,7 +68,7 @@ object AiEthosDjService {
                 return@withContext false
             }
 
-            val rawResponse = filterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
+            val rawResponse = FilterEngine.executeLlmWaterfallRequest(prompt, primaryKey)
             if (rawResponse.isNullOrBlank()) {
                 onStatus("⚠️ AI DJ could not generate recommendations")
                 return@withContext false

@@ -130,10 +130,10 @@ object PlaylistMirrorService {
                 } else {
                     // Track is flagged! Dynamically find a clean sister track with the same vibe
                     val profileName = when (filterEngine.profile) {
-                        0 -> "Islamic"
-                        1 -> "Christian"
-                        2 -> "Family Safe"
-                        else -> "Conscious"
+                        EthosProfile.ISLAMIC -> "Islamic"
+                        EthosProfile.CHRISTIAN -> "Christian"
+                        EthosProfile.FAMILY_FRIENDLY -> "Family Safe"
+                        EthosProfile.GENERAL -> "Conscious"
                     }
 
                     val substitute = VibeSubstituteService.findCleanSisterTrack(
