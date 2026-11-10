@@ -36,14 +36,7 @@ class SpotifySetupActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_CLIENT_ID = "extra_client_id"
         private const val SPOTIFY_DASHBOARD_URL = "https://developer.spotify.com/dashboard"
-        private const val CHROME_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.127 Mobile Safari/537.36"
-        // Intercept ONLY non-essential ad networks; do NOT block consent or analytics scripts required by Spotify React hydration
-        private val BLOCKED_TRACKER_DOMAINS = arrayOf(
-            "google-analytics.com",
-            "doubleclick.net",
-            "hotjar.com"
-        )
+        private const val SPOTIFY_LOGIN_URL = "https://accounts.spotify.com/en/login?continue=https%3A%2F%2Fdeveloper.spotify.com%2Fdashboard"
 
         fun createIntent(context: Context): Intent {
             return Intent(context, SpotifySetupActivity::class.java)
@@ -94,7 +87,7 @@ class SpotifySetupActivity : AppCompatActivity() {
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPOTIFY_DASHBOARD_URL))
                 startActivity(intent)
-                Toast.makeText(this, "Opened Spotify Dashboard in Chrome. Copy your Client ID and return here.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Opened Spotify in Chrome. Copy your Client ID and return here.", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(this, "Could not open browser: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -106,9 +99,41 @@ class SpotifySetupActivity : AppCompatActivity() {
                 injectAutomationScript(force = true)
                 Toast.makeText(this, "Scanning page for Client ID...", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Please log in first. Automation runs on Developer Dashboard.", Toast.LENGTH_SHORT).show()
+                showManualPasteDialog()
             }
         }
+    }
+
+    private fun showManualPasteDialog() {
+        val input = com.google.android.material.textfield.TextInputEditText(this).apply {
+            hint = "Paste 32-character Client ID"
+            setSingleLine(true)
+            val clip = (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)?.primaryClip
+            val text = clip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
+            if (text.matches(Regex("^[0-9a-f]{32}$", RegexOption.IGNORE_CASE))) {
+                setText(text)
+            }
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+            addView(input)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Enter Spotify Client ID")
+            .setMessage("Copy the Client ID from your Spotify Developer Dashboard in Chrome and paste it here:")
+            .setView(container)
+            .setPositiveButton("Link App") { _, _ ->
+                val entered = input.text?.toString()?.trim() ?: ""
+                if (entered.matches(Regex("^[0-9a-f]{32}$", RegexOption.IGNORE_CASE))) {
+                    handleClientIdCaptured(entered)
+                } else {
+                    Toast.makeText(this, "Invalid Client ID: must be 32 hexadecimal characters", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -129,8 +154,10 @@ class SpotifySetupActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            userAgentString = CHROME_USER_AGENT
-            // Speed optimizations: enable aggressive disk/memory caching and background decoding
+            // Authentic system user agent with WebView tag cleanly removed to prevent Arkose/bot challenge failure
+            val defaultUa = userAgentString ?: ""
+            userAgentString = defaultUa.replace("; wv", "")
+            // Caching & rendering
             cacheMode = WebSettings.LOAD_DEFAULT
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
@@ -165,17 +192,6 @@ class SpotifySetupActivity : AppCompatActivity() {
         }
 
         binding.webView.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                val url = request?.url?.toString()?.lowercase() ?: return super.shouldInterceptRequest(view, request)
-                for (domain in BLOCKED_TRACKER_DOMAINS) {
-                    if (url.contains(domain)) {
-                        // Drop 3rd party ad tracker script instantly to prevent network stalls
-                        return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
-                    }
-                }
-                return super.shouldInterceptRequest(view, request)
-            }
-
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val nextUrl = request?.url?.toString() ?: ""
                 android.util.Log.d("SpotifyWebView", "Navigating to: $nextUrl")
@@ -194,11 +210,13 @@ class SpotifySetupActivity : AppCompatActivity() {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                CookieManager.getInstance().flush()
                 updateStatusForUrl(url)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                CookieManager.getInstance().flush()
                 updateStatusForUrl(url)
                 // Strict Guard: ONLY inject automation when on the developer dashboard, NEVER on accounts.spotify.com
                 if (url != null && url.contains("developer.spotify.com/dashboard")) {
@@ -207,7 +225,11 @@ class SpotifySetupActivity : AppCompatActivity() {
             }
         }
 
-        binding.webView.loadUrl(SPOTIFY_DASHBOARD_URL)
+        // Direct users with no active session directly to login to avoid 'Could not access this dashboard' crash
+        val cookies = cookieManager.getCookie("https://developer.spotify.com") ?: ""
+        val hasSession = cookies.contains("sp_dc") || cookies.contains("sp_t") || cookies.contains("sp_key")
+        val initialUrl = if (hasSession) SPOTIFY_DASHBOARD_URL else SPOTIFY_LOGIN_URL
+        binding.webView.loadUrl(initialUrl)
     }
 
     private fun updateStatusForUrl(url: String?) {
