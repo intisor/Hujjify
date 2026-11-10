@@ -548,7 +548,7 @@
                         android:id="@+id/tvAppVersion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Installed: v1.9.6"
+                        android:text="Installed: v1.9.7"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="14sp"
                         android:textStyle="bold" />

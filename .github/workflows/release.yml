@@ -76,15 +76,17 @@ jobs:
 
       - name: Compress Release Archive
         run: |
+          Copy-Item "publish\win-x64\Alify.Spotify.exe" "publish\win-x64\Ujify.exe" -Force
           Copy-Item "publish\win-x64\Alify.Spotify.exe" "publish\win-x64\Alify.exe" -Force
           mkdir release-assets
+          Compress-Archive -Path 'publish\win-x64\*' -DestinationPath 'release-assets\Ujify-Windows-x64.zip' -Force
           Compress-Archive -Path 'publish\win-x64\*' -DestinationPath 'release-assets\Alify-Windows-x64.zip' -Force
 
       - name: Upload Windows Staging Artifact
         uses: actions/upload-artifact@v4
         with:
           name: staged-desktop
-          path: release-assets/Alify-Windows-x64.zip
+          path: release-assets/*.zip
 
   publish-github-release:
     name: Create GitHub Release
@@ -109,6 +111,7 @@ jobs:
         with:
           files: |
             final-release/Ujify.apk
+            final-release/Ujify-Windows-x64.zip
             final-release/Alify-Windows-x64.zip
             final-release/**/*.apk
             final-release/**/*.zip
