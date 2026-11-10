@@ -18,7 +18,34 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySanctuaryPlaylistBinding
     private lateinit var authManager: SpotifyAuthManager
     private val lrclibClient = LrclibClient()
-    private var isMirroring = false
+
+    private val progressObserver: (MirrorProgress) -> Unit = { progress ->
+        runOnUiThread { updateProgressUi(progress) }
+    }
+
+    private val completionObserver: (String?, String?) -> Unit = { newPlaylistId, errorReason ->
+        runOnUiThread {
+            if (newPlaylistId != null) {
+                binding.tvProgressTitle.text = "Sanctuary Mirror Created!"
+                binding.tvProgressStatus.text = "All explicit tracks were dynamically swapped with clean sister vibes."
+                binding.btnOpenInSpotify.visibility = View.VISIBLE
+                binding.btnOpenInSpotify.setOnClickListener {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("spotify:playlist:$newPlaylistId"))
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/playlist/$newPlaylistId"))
+                        startActivity(webIntent)
+                    }
+                }
+                loadPlaylists()
+            } else if (errorReason != null) {
+                binding.tvProgressTitle.text = "Sanctuary Creation Incomplete"
+                binding.tvProgressStatus.text = errorReason
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,16 +55,15 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         authManager = SpotifyAuthManager(this)
 
         binding.btnBack.setOnClickListener {
-            if (isMirroring) {
-                Toast.makeText(this, "Sanctuary mirror in progress...", Toast.LENGTH_SHORT).show()
-            } else {
-                finish()
-            }
+            // Background mirroring will safely continue regardless of navigation
+            finish()
         }
 
         binding.btnRefresh.setOnClickListener {
-            if (!isMirroring) {
+            if (!PlaylistMirrorService.isMirroringActive) {
                 loadPlaylists()
+            } else {
+                Toast.makeText(this, "Sanctuary mirror currently running in background...", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -46,9 +72,35 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!isMirroring && authManager.isConnected()) {
+        PlaylistMirrorService.addProgressListener(progressObserver)
+        PlaylistMirrorService.addCompletionListener(completionObserver)
+
+        if (PlaylistMirrorService.isMirroringActive) {
+            val activeName = PlaylistMirrorService.activePlaylistName ?: "Playlist"
+            binding.cardMirrorProgress.visibility = View.VISIBLE
+            binding.tvProgressTitle.text = "Sanctifying: $activeName"
+            PlaylistMirrorService.currentProgress?.let { updateProgressUi(it) }
+        } else if (authManager.isConnected()) {
             loadPlaylists()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        PlaylistMirrorService.removeProgressListener(progressObserver)
+        PlaylistMirrorService.removeCompletionListener(completionObserver)
+    }
+
+    private fun updateProgressUi(progress: MirrorProgress) {
+        binding.cardMirrorProgress.visibility = View.VISIBLE
+        binding.tvProgressStatus.text = progress.statusText
+        if (progress.total > 0) {
+            binding.pbMirror.isIndeterminate = false
+            binding.pbMirror.max = progress.total
+            binding.pbMirror.progress = progress.current
+        }
+        binding.tvCleanPreserved.text = "Preserved: ${progress.cleanCount}"
+        binding.tvVibeReplaced.text = "Swapped: ${progress.replacedCount}"
     }
 
     private fun loadPlaylists() {
@@ -117,7 +169,8 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         for (playlist in playlists) {
             val itemBinding = ItemSanctuaryPlaylistBinding.inflate(layoutInflater, binding.layoutPlaylistsContainer, false)
             itemBinding.tvPlaylistName.text = playlist.name
-            itemBinding.tvPlaylistTrackCount.text = "${playlist.trackCount} tracks"
+            // Robust track display: if 0 or unknown, show 'Ready to Sanctify'
+            itemBinding.tvPlaylistTrackCount.text = if (playlist.trackCount > 0) "${playlist.trackCount} tracks" else "Ready to Sanctify"
 
             // If it's already a Sanctuary playlist, style differently
             if (playlist.name.contains("Sanctuary:")) {
@@ -127,10 +180,10 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
                 itemBinding.btnSanctify.setTextColor(0xFF888888.toInt())
             } else {
                 itemBinding.btnSanctify.setOnClickListener {
-                    if (!isMirroring) {
+                    if (!PlaylistMirrorService.isMirroringActive) {
                         startMirroring(playlist, token)
                     } else {
-                        Toast.makeText(this, "Another mirror operation is currently running", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "A sanctuary mirror is currently running in the background", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -140,60 +193,21 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
     }
 
     private fun startMirroring(playlist: SpotifyPlaylistItem, token: String) {
-        isMirroring = true
         binding.cardMirrorProgress.visibility = View.VISIBLE
         binding.btnOpenInSpotify.visibility = View.GONE
         binding.tvProgressTitle.text = "Sanctifying: ${playlist.name}"
-        binding.tvProgressStatus.text = "Starting audit..."
+        binding.tvProgressStatus.text = "Starting background audit..."
         binding.pbMirror.isIndeterminate = true
         binding.tvCleanPreserved.text = "Preserved: 0"
         binding.tvVibeReplaced.text = "Swapped: 0"
 
         val filterEngine = FilterEngine.fromPreferences(this)
-
-        lifecycleScope.launch {
-            val newPlaylistId = PlaylistMirrorService.createSanctuaryMirror(
-                context = this@SanctuaryPlaylistActivity,
-                sourcePlaylistId = playlist.id,
-                sourcePlaylistName = playlist.name,
-                token = token,
-                filterEngine = filterEngine,
-                lrclibClient = lrclibClient
-            ) { progress ->
-                runOnUiThread {
-                    binding.tvProgressStatus.text = progress.statusText
-                    if (progress.total > 0) {
-                        binding.pbMirror.isIndeterminate = false
-                        binding.pbMirror.max = progress.total
-                        binding.pbMirror.progress = progress.current
-                    }
-                    binding.tvCleanPreserved.text = "Preserved: ${progress.cleanCount}"
-                    binding.tvVibeReplaced.text = "Swapped: ${progress.replacedCount}"
-                }
-            }
-
-            isMirroring = false
-
-            if (newPlaylistId != null) {
-                binding.tvProgressTitle.text = "Sanctuary Mirror Created!"
-                binding.tvProgressStatus.text = "All explicit tracks were dynamically swapped with clean sister vibes."
-                binding.btnOpenInSpotify.visibility = View.VISIBLE
-                binding.btnOpenInSpotify.setOnClickListener {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("spotify:playlist:$newPlaylistId"))
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/playlist/$newPlaylistId"))
-                        startActivity(webIntent)
-                    }
-                }
-                // Refresh list so user sees new mirror
-                loadPlaylists()
-            } else {
-                binding.tvProgressTitle.text = "Sanctuary Creation Incomplete"
-                binding.tvProgressStatus.text = "Unable to complete mirror. Please check your connection and try again."
-            }
-        }
+        PlaylistMirrorService.startSanctuaryMirrorBackground(
+            context = applicationContext,
+            playlist = playlist,
+            token = token,
+            filterEngine = filterEngine,
+            lrclibClient = lrclibClient
+        )
     }
 }

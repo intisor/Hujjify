@@ -2,7 +2,10 @@ package com.alify.spotify
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -10,6 +13,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
 
 data class SpotifyPlaylistItem(
@@ -41,6 +45,104 @@ object PlaylistMirrorService {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    // Application-Level Coroutine Scope so background mirroring persists across screen navigation
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val progressListeners = CopyOnWriteArraySet<(MirrorProgress) -> Unit>()
+    private val completionListeners = CopyOnWriteArraySet<(newPlaylistId: String?, errorReason: String?) -> Unit>()
+
+    @Volatile var isMirroringActive: Boolean = false
+        private set
+    @Volatile var activePlaylistId: String? = null
+        private set
+    @Volatile var activePlaylistName: String? = null
+        private set
+    @Volatile var currentProgress: MirrorProgress? = null
+        private set
+    @Volatile var lastMirrorResult: String? = null
+        private set
+    @Volatile var lastErrorReason: String? = null
+        private set
+
+    fun addProgressListener(listener: (MirrorProgress) -> Unit) {
+        progressListeners.add(listener)
+        currentProgress?.let { listener(it) }
+    }
+
+    fun removeProgressListener(listener: (MirrorProgress) -> Unit) {
+        progressListeners.remove(listener)
+    }
+
+    fun addCompletionListener(listener: (newPlaylistId: String?, errorReason: String?) -> Unit) {
+        completionListeners.add(listener)
+        if (!isMirroringActive && (lastMirrorResult != null || lastErrorReason != null)) {
+            listener(lastMirrorResult, lastErrorReason)
+        }
+    }
+
+    fun removeCompletionListener(listener: (newPlaylistId: String?, errorReason: String?) -> Unit) {
+        completionListeners.remove(listener)
+    }
+
+    /**
+     * Triggers sanctuary playlist creation in a decoupled background scope.
+     * User can freely navigate between pages or lock the screen without interrupting execution.
+     */
+    fun startSanctuaryMirrorBackground(
+        context: Context,
+        playlist: SpotifyPlaylistItem,
+        token: String,
+        filterEngine: FilterEngine,
+        lrclibClient: LrclibClient
+    ) {
+        if (isMirroringActive) return
+
+        isMirroringActive = true
+        activePlaylistId = playlist.id
+        activePlaylistName = playlist.name
+        lastMirrorResult = null
+        lastErrorReason = null
+
+        val initProgress = MirrorProgress(0, playlist.trackCount.coerceAtLeast(1), "Starting background sanctification for '${playlist.name}'...")
+        currentProgress = initProgress
+        for (l in progressListeners) {
+            try { l(initProgress) } catch (_: Exception) {}
+        }
+
+        serviceScope.launch {
+            try {
+                val newId = createSanctuaryMirror(
+                    context = context,
+                    sourcePlaylistId = playlist.id,
+                    sourcePlaylistName = playlist.name,
+                    token = token,
+                    filterEngine = filterEngine,
+                    lrclibClient = lrclibClient
+                ) { prog ->
+                    currentProgress = prog
+                    for (l in progressListeners) {
+                        try { l(prog) } catch (_: Exception) {}
+                    }
+                }
+
+                lastMirrorResult = newId
+                if (newId == null && lastErrorReason == null) {
+                    lastErrorReason = "Spotify API returned no tracks or playlist creation was not authorized."
+                }
+
+                for (l in completionListeners) {
+                    try { l(newId, lastErrorReason) } catch (_: Exception) {}
+                }
+            } catch (e: Exception) {
+                lastErrorReason = e.message ?: "Unexpected error during background mirroring"
+                for (l in completionListeners) {
+                    try { l(null, lastErrorReason) } catch (_: Exception) {}
+                }
+            } finally {
+                isMirroringActive = false
+            }
+        }
+    }
+
     /**
      * Retrieves the current user's playlists from Spotify.
      * GET /v1/me/playlists?limit=50
@@ -70,7 +172,13 @@ object PlaylistMirrorService {
                     val id = p.optString("id")
                     val name = p.optString("name")
                     val tracksObj = p.optJSONObject("tracks")
-                    val total = tracksObj?.optInt("total", 0) ?: 0
+                    // Robust track count resolution: checks tracks.total, total_tracks, and total
+                    val total = when {
+                        tracksObj != null -> tracksObj.optInt("total", 0)
+                        p.has("total_tracks") -> p.optInt("total_tracks", 0)
+                        p.has("total") -> p.optInt("total", 0)
+                        else -> 0
+                    }
                     val images = p.optJSONArray("images")
                     val imageUrl = if (images != null && images.length() > 0) {
                         images.getJSONObject(0).optString("url")
@@ -107,7 +215,8 @@ object PlaylistMirrorService {
             // 1. Fetch tracks from the source playlist
             val trackItems = getPlaylistTracks(sourcePlaylistId, token)
             if (trackItems.isEmpty()) {
-                Log.w(TAG, "Source playlist is empty")
+                lastErrorReason = "Spotify returned 0 playable tracks for '$sourcePlaylistName'. The playlist may be empty or restricted."
+                Log.w(TAG, lastErrorReason)
                 return@withContext null
             }
 
@@ -172,6 +281,11 @@ object PlaylistMirrorService {
                 }
             }
 
+            if (cleanUris.isEmpty()) {
+                lastErrorReason = "No clean tracks could be verified for '$sourcePlaylistName'."
+                return@withContext null
+            }
+
             // 3. Create the new Sanctuary playlist in user's Spotify account
             onProgress(
                 MirrorProgress(
@@ -184,7 +298,11 @@ object PlaylistMirrorService {
             )
 
             val mirrorName = "Sanctuary: $sourcePlaylistName"
-            val newPlaylistId = createEmptyPlaylist(mirrorName, token) ?: return@withContext null
+            val newPlaylistId = createEmptyPlaylist(mirrorName, token)
+            if (newPlaylistId == null) {
+                lastErrorReason = "Spotify refused to create playlist '$mirrorName'. Please reconnect Spotify in Settings with playlist write permissions."
+                return@withContext null
+            }
 
             // 4. Populate clean tracks in batches of 100
             addTracksToPlaylist(newPlaylistId, cleanUris, token)
@@ -202,6 +320,7 @@ object PlaylistMirrorService {
             newPlaylistId
         } catch (e: Exception) {
             Log.e(TAG, "Error generating sanctuary mirror: ${e.message}", e)
+            lastErrorReason = e.message ?: "Failed to generate sanctuary mirror"
             null
         }
     }
@@ -209,7 +328,8 @@ object PlaylistMirrorService {
     private suspend fun getPlaylistTracks(playlistId: String, token: String): List<Tuple4<String, String, String, Boolean>> = withContext(Dispatchers.IO) {
         val list = mutableListOf<Tuple4<String, String, String, Boolean>>()
         try {
-            val url = "https://api.spotify.com/v1/playlists/$playlistId/tracks?limit=100&fields=items(track(name,artists(name),uri,explicit))"
+            // Clean standard endpoint with no fragile, unencoded fields parameter
+            val url = "https://api.spotify.com/v1/playlists/$playlistId/tracks?limit=100"
             val req = Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer $token")
@@ -217,11 +337,16 @@ object PlaylistMirrorService {
                 .build()
 
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext emptyList()
-                val json = JSONObject(resp.body?.string() ?: "")
+                if (!resp.isSuccessful) {
+                    Log.w(TAG, "getPlaylistTracks failed with status code ${resp.code}: ${resp.message}")
+                    return@withContext emptyList()
+                }
+                val body = resp.body?.string() ?: ""
+                val json = JSONObject(body)
                 val items = json.optJSONArray("items") ?: return@withContext emptyList()
                 for (i in 0 until items.length()) {
-                    val track = items.optJSONObject(i)?.optJSONObject("track") ?: continue
+                    val itemObj = items.optJSONObject(i) ?: continue
+                    val track = itemObj.optJSONObject("track") ?: itemObj
                     val name = track.optString("name")
                     val uri = track.optString("uri")
                     val explicit = track.optBoolean("explicit", false)
@@ -242,13 +367,14 @@ object PlaylistMirrorService {
     }
 
     private suspend fun createEmptyPlaylist(name: String, token: String): String? = withContext(Dispatchers.IO) {
-        try {
-            val body = JSONObject().apply {
-                put("name", name)
-                put("description", "Ethically verified clean mirror created by Ujify AI Sentinel.")
-                put("public", false)
-            }.toString().toRequestBody("application/json".toMediaType())
+        val body = JSONObject().apply {
+            put("name", name)
+            put("description", "Ethically verified clean mirror created by Ujify AI Sentinel.")
+            put("public", false)
+        }.toString().toRequestBody("application/json".toMediaType())
 
+        // 1. Attempt standard POST /v1/me/playlists
+        try {
             val req = Request.Builder()
                 .url("https://api.spotify.com/v1/me/playlists")
                 .header("Authorization", "Bearer $token")
@@ -256,14 +382,52 @@ object PlaylistMirrorService {
                 .build()
 
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext null
-                val json = JSONObject(resp.body?.string() ?: "")
-                json.optString("id").takeIf { it.isNotBlank() }
+                if (resp.isSuccessful) {
+                    val json = JSONObject(resp.body?.string() ?: "")
+                    val id = json.optString("id")
+                    if (id.isNotBlank()) return@withContext id
+                }
+                Log.w(TAG, "POST /v1/me/playlists returned ${resp.code}. Trying user endpoint fallback...")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create empty playlist: ${e.message}")
-            null
+            Log.w(TAG, "Failed to create playlist via /me: ${e.message}")
         }
+
+        // 2. Fallback: Query current user profile ID and POST /v1/users/{user_id}/playlists
+        try {
+            val userReq = Request.Builder()
+                .url("https://api.spotify.com/v1/me")
+                .header("Authorization", "Bearer $token")
+                .get()
+                .build()
+
+            var userId: String? = null
+            httpClient.newCall(userReq).execute().use { userResp ->
+                if (userResp.isSuccessful) {
+                    val userJson = JSONObject(userResp.body?.string() ?: "")
+                    userId = userJson.optString("id").takeIf { it.isNotBlank() }
+                }
+            }
+
+            if (userId != null) {
+                val userPlaylistReq = Request.Builder()
+                    .url("https://api.spotify.com/v1/users/$userId/playlists")
+                    .header("Authorization", "Bearer $token")
+                    .post(body)
+                    .build()
+
+                httpClient.newCall(userPlaylistReq).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val json = JSONObject(resp.body?.string() ?: "")
+                        return@withContext json.optString("id").takeIf { it.isNotBlank() }
+                    }
+                    Log.e(TAG, "POST /v1/users/$userId/playlists failed with code ${resp.code}: ${resp.body?.string()}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fallback playlist creation failed: ${e.message}")
+        }
+        null
     }
 
     private suspend fun addTracksToPlaylist(playlistId: String, uris: List<String>, token: String) = withContext(Dispatchers.IO) {

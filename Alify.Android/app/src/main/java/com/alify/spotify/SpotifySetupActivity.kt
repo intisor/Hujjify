@@ -38,17 +38,10 @@ class SpotifySetupActivity : AppCompatActivity() {
         private const val SPOTIFY_DASHBOARD_URL = "https://developer.spotify.com/dashboard"
         private const val CHROME_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.127 Mobile Safari/537.36"
+        // Intercept ONLY non-essential ad networks; do NOT block consent or analytics scripts required by Spotify React hydration
         private val BLOCKED_TRACKER_DOMAINS = arrayOf(
-            "googletagmanager.com",
             "google-analytics.com",
-            "datadoghq-browser-agent.com",
-            "datadoghq.com",
-            "browser.sentry-cdn.com",
             "doubleclick.net",
-            "consent.trustarc.com",
-            "cookielaw.org",
-            "optanon.blob.core.windows.net",
-            "crashlytics.com",
             "hotjar.com"
         )
 
@@ -146,7 +139,8 @@ class SpotifySetupActivity : AppCompatActivity() {
         binding.webView.addJavascriptInterface(WebAppBridge(), "UjifyBridge")
         binding.webView.addJavascriptInterface(WebAppBridge(), "HujjifyBridge")
 
-        binding.webView.settings.setSupportMultipleWindows(true)
+        // Keep all navigation and popup interactions inside the visible WebView
+        binding.webView.settings.setSupportMultipleWindows(false)
         binding.webView.settings.javaScriptCanOpenWindowsAutomatically = true
 
         binding.webView.webChromeClient = object : WebChromeClient() {
@@ -159,45 +153,13 @@ class SpotifySetupActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onCreateWindow(
-                view: WebView?,
-                isDialog: Boolean,
-                isUserGesture: Boolean,
-                resultMsg: android.os.Message?
-            ): Boolean {
-                if (resultMsg == null) return false
-                val newWebView = WebView(this@SpotifySetupActivity).apply {
-                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                        userAgentString = CHROME_USER_AGENT
-                    }
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                            val url = request?.url?.toString()?.lowercase() ?: return super.shouldInterceptRequest(view, request)
-                            for (domain in BLOCKED_TRACKER_DOMAINS) {
-                                if (url.contains(domain)) {
-                                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
-                                }
-                            }
-                            return super.shouldInterceptRequest(view, request)
-                        }
-
-                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                            val nextUrl = request?.url?.toString() ?: ""
-                            if (nextUrl.contains("developer.spotify.com") || nextUrl.contains("accounts.spotify.com")) {
-                                binding.webView.loadUrl(nextUrl)
-                                return true
-                            }
-                            return false
-                        }
-                    }
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                if (consoleMessage != null) {
+                    android.util.Log.d(
+                        "SpotifyWebView",
+                        "[JS ${consoleMessage.messageLevel()}] ${consoleMessage.message()} (at ${consoleMessage.sourceId()}:${consoleMessage.lineNumber()})"
+                    )
                 }
-                val transport = resultMsg.obj as? WebView.WebViewTransport
-                transport?.webView = newWebView
-                resultMsg.sendToTarget()
                 return true
             }
         }
@@ -207,7 +169,7 @@ class SpotifySetupActivity : AppCompatActivity() {
                 val url = request?.url?.toString()?.lowercase() ?: return super.shouldInterceptRequest(view, request)
                 for (domain in BLOCKED_TRACKER_DOMAINS) {
                     if (url.contains(domain)) {
-                        // Drop 3rd party tracker/telemetry script instantly to prevent UI stalls and network latency
+                        // Drop 3rd party ad tracker script instantly to prevent network stalls
                         return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
                     }
                 }
@@ -215,7 +177,19 @@ class SpotifySetupActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false // Keep everything inside our WebView
+                val nextUrl = request?.url?.toString() ?: ""
+                android.util.Log.d("SpotifyWebView", "Navigating to: $nextUrl")
+                return false // Keep everything inside our visible WebView
+            }
+
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                super.onReceivedError(view, request, error)
+                val url = request?.url?.toString() ?: ""
+                val desc = error?.description?.toString() ?: "Unknown error"
+                android.util.Log.e("SpotifyWebView", "WebView load error ($desc) for $url")
+                if (request?.isForMainFrame == true) {
+                    binding.tvStatusMessage.text = "Connection issue loading Spotify ($desc). Tap 'Open in Chrome' or retry."
+                }
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

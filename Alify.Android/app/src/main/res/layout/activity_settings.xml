@@ -124,13 +124,15 @@
                         app:tint="@color/spotify_light_text" />
                 </LinearLayout>
 
-                <!-- Input Client ID -->
+                <!-- Input Client ID (Decluttered) -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilSpotifyClientId"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Paste Spotify Client ID"
+                    android:hint="Spotify Client ID"
+                    app:placeholderText="32-character hex ID (e.g. 1a2b3c...)"
+                    app:placeholderTextColor="@color/spotify_sub_text"
                     app:boxBackgroundColor="@color/spotify_black"
                     app:boxCornerRadiusBottomEnd="6dp"
                     app:boxCornerRadiusBottomStart="6dp"
@@ -240,21 +242,15 @@
                     android:textColor="@color/spotify_sub_text"
                     android:textSize="12sp" />
 
-                <!-- Compact Natural Language Directive -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Custom Ethos Directive:"
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
+                <!-- Custom Ethos Directive Input (Decluttered) -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilCustomEthosPrompt"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:hint="e.g. 'Allow romance, block drill and clubs'..."
+                    android:layout_marginTop="10dp"
+                    android:hint="Custom Ethos Directive"
+                    app:placeholderText="e.g. Allow romance, block drill &amp; club themes..."
+                    app:placeholderTextColor="@color/spotify_sub_text"
                     app:boxBackgroundColor="@color/spotify_black"
                     app:boxCornerRadiusBottomEnd="6dp"
                     app:boxCornerRadiusBottomStart="6dp"
