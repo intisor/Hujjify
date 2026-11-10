@@ -76,8 +76,9 @@
         style="@style/Widget.AppCompat.ProgressBar.Horizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:indeterminate="true"
-        android:indeterminateTint="@color/spotify_green"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="0"
         android:progressTint="@color/spotify_green" />
 
     <!-- Live Status Banner (Clamped to max 2 lines so it never blocks the view) -->

@@ -17,8 +17,11 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.io.ByteArrayInputStream
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.alify.spotify.databinding.ActivitySpotifySetupBinding
@@ -35,6 +38,19 @@ class SpotifySetupActivity : AppCompatActivity() {
         private const val SPOTIFY_DASHBOARD_URL = "https://developer.spotify.com/dashboard"
         private const val CHROME_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.127 Mobile Safari/537.36"
+        private val BLOCKED_TRACKER_DOMAINS = arrayOf(
+            "googletagmanager.com",
+            "google-analytics.com",
+            "datadoghq-browser-agent.com",
+            "datadoghq.com",
+            "browser.sentry-cdn.com",
+            "doubleclick.net",
+            "consent.trustarc.com",
+            "cookielaw.org",
+            "optanon.blob.core.windows.net",
+            "crashlytics.com",
+            "hotjar.com"
+        )
 
         fun createIntent(context: Context): Intent {
             return Intent(context, SpotifySetupActivity::class.java)
@@ -104,6 +120,9 @@ class SpotifySetupActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        // Boost rendering and scrolling performance via Hardware Acceleration
+        binding.webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(binding.webView, true)
@@ -118,6 +137,10 @@ class SpotifySetupActivity : AppCompatActivity() {
             builtInZoomControls = true
             displayZoomControls = false
             userAgentString = CHROME_USER_AGENT
+            // Speed optimizations: enable aggressive disk/memory caching and background decoding
+            cacheMode = WebSettings.LOAD_DEFAULT
+            loadsImagesAutomatically = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
         binding.webView.addJavascriptInterface(WebAppBridge(), "UjifyBridge")
@@ -144,10 +167,24 @@ class SpotifySetupActivity : AppCompatActivity() {
             ): Boolean {
                 if (resultMsg == null) return false
                 val newWebView = WebView(this@SpotifySetupActivity).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.userAgentString = CHROME_USER_AGENT
+                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        cacheMode = WebSettings.LOAD_DEFAULT
+                        userAgentString = CHROME_USER_AGENT
+                    }
                     webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                            val url = request?.url?.toString()?.lowercase() ?: return super.shouldInterceptRequest(view, request)
+                            for (domain in BLOCKED_TRACKER_DOMAINS) {
+                                if (url.contains(domain)) {
+                                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                }
+                            }
+                            return super.shouldInterceptRequest(view, request)
+                        }
+
                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                             val nextUrl = request?.url?.toString() ?: ""
                             if (nextUrl.contains("developer.spotify.com") || nextUrl.contains("accounts.spotify.com")) {
@@ -166,6 +203,17 @@ class SpotifySetupActivity : AppCompatActivity() {
         }
 
         binding.webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url?.toString()?.lowercase() ?: return super.shouldInterceptRequest(view, request)
+                for (domain in BLOCKED_TRACKER_DOMAINS) {
+                    if (url.contains(domain)) {
+                        // Drop 3rd party tracker/telemetry script instantly to prevent UI stalls and network latency
+                        return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                    }
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false // Keep everything inside our WebView
             }
