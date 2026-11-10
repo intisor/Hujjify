@@ -228,33 +228,16 @@
                         android:progress="10" />
                 </LinearLayout>
 
-                <!-- Checkboxes Group (Compact) -->
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbEnableVibeSwap"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginTop="4dp"
-                    android:checked="true"
-                    android:text="AI Vibe-Swap (Auto-replace flagged songs)"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="12sp" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbEnableSurgicalDucking"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:checked="true"
-                    android:text="Radio Edit (Surgical word ducking on isolated flags)"
-                    android:textColor="@color/spotify_light_text"
-                    android:textSize="12sp" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbExplicitSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:checked="false"
-                    android:text="Strict Metadata: Skip Spotify [E] Explicit tags"
-                    android:textColor="@color/spotify_light_text"
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/stat_box_background"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="8dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Intelligent Guardian: Automatically blocks explicit metadata, duck-mutes isolated flags, and swaps clean sister tracks seamlessly."
+                    android:textColor="@color/spotify_sub_text"
                     android:textSize="12sp" />
 
                 <!-- Compact Natural Language Directive -->
@@ -309,30 +292,21 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <LinearLayout
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3. Semantic AI Stance Engine"
+                    android:textColor="@color/spotify_green"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="3. AI Semantic Engine (BYOK)"
-                        android:textColor="@color/spotify_green"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.checkbox.MaterialCheckBox
-                        android:id="@+id/cbEnableAi"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:checked="true"
-                        android:text="Enabled"
-                        android:textColor="@color/spotify_light_text"
-                        android:textSize="12sp" />
-                </LinearLayout>
+                    android:layout_marginTop="2dp"
+                    android:text="AI semantic analysis is active out of the box with community keys and offline fallback. (Optional) Enter your personal key below for unlimited custom access."
+                    android:textColor="@color/spotify_sub_text"
+                    android:textSize="12sp" />
 
                 <!-- API Key Input -->
                 <com.google.android.material.textfield.TextInputLayout
@@ -360,39 +334,7 @@
                         android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Engine Mode Selection -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Engine Mode:"
-                        android:textColor="@color/spotify_light_text"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <Spinner
-                        android:id="@+id/spAnalysisMode"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:background="@android:drawable/btn_dropdown" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tvAnalysisModeHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="AI Semantic Engine is authoritative; regex runs only as offline fallback."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
 
                 <!-- Key Helper Link -->
                 <LinearLayout

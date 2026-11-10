@@ -304,6 +304,7 @@ class AlifyMonitorService : Service() {
                 }
                 updateNotification("Playing: $trackName - $artistName")
                 SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
+                com.streakkit.StreakKit.ping(this@AlifyMonitorService, "ujify_playback", value = 1)
             }
 
             // Lookahead Queue Pre-Auditing: Quietly pre-audit the upcoming tracks in the background
@@ -399,6 +400,8 @@ class AlifyMonitorService : Service() {
                             isLastFlagged = false
                             lastStatusBadge = "Clean (AI Verified)"
                             updateNotification("Playing: $trackName - $artistName")
+                            SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
+                            com.streakkit.StreakKit.ping(this@AlifyMonitorService, "ujify_playback", value = 1)
                         }
                     }
                 } else {

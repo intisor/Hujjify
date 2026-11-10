@@ -360,8 +360,8 @@ class MainActivity : AppCompatActivity() {
         val profileNames = listOf("Islamic", "Christian", "Family Safe", "General")
         val profileName = profileNames.getOrElse(profileOrdinal) { "Islamic" }
         val strictness = filterPrefs.getInt("filter_strictness", 10)
-        val aiEnabled = filterPrefs.getBoolean("enable_gemini", true)
-        val aiStatus = if (aiEnabled) "AI Enabled" else "Regex Only"
+        val customAiKey = filterPrefs.getString("gemini_api_key", "") ?: ""
+        val aiStatus = if (customAiKey.isNotBlank()) "Custom AI Key" else "Intelligent Guardian"
         binding.tvActiveEthos.text = "Active Filter: $profileName ($strictness/10) • $aiStatus"
 
         if (connected) {

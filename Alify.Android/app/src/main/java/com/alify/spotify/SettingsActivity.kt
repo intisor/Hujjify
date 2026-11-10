@@ -192,25 +192,7 @@ class SettingsActivity : AppCompatActivity() {
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, profiles)
         binding.spProfileSettings.adapter = adapter
 
-        // Analysis Engine Mode Spinner
-        val engineModes = listOf(
-            "AI Semantic Engine (Authoritative: zero regex false flags)",
-            "Offline Heuristic Engine (On-device regex only, 0 tokens)",
-            "Hybrid Guardrails (Regex tripwire + AI verification)"
-        )
-        val modeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, engineModes)
-        binding.spAnalysisMode.adapter = modeAdapter
-        binding.spAnalysisMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                binding.tvAnalysisModeHint.text = when (position) {
-                    0 -> "AI evaluates full lyrical nuance, Pidgin/slang, and intentional directives directly. Offline regex runs ONLY as fallback if network fails."
-                    1 -> "Pure on-device regex scanning. Zero API calls, zero tokens, works 100% offline."
-                    2 -> "Strict dual guardrails: runs fast regex tripwire first, then calls AI for semantic confirmation."
-                    else -> ""
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
+        // Analysis Engine mode is unified: AI Semantic with automatic offline fallback
 
         // Strictness SeekBar
         binding.sbStrictnessSettings.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -221,11 +203,7 @@ class SettingsActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        binding.cbEnableAi.setOnCheckedChangeListener { _, isChecked ->
-            binding.tilAiApiKey.visibility = if (isChecked) View.VISIBLE else View.GONE
-            binding.btnToggleAdvancedAi.visibility = if (isChecked) View.VISIBLE else View.GONE
-            if (!isChecked) binding.llAdvancedAiContainer.visibility = View.GONE
-        }
+// AI Semantic Engine is always active
 
         binding.btnToggleAdvancedAi.setOnClickListener {
             if (binding.llAdvancedAiContainer.visibility == View.VISIBLE) {
@@ -304,10 +282,6 @@ class SettingsActivity : AppCompatActivity() {
         binding.etCustomEthosPrompt.setText(filterPrefs.getString("custom_ethos_prompt", ""))
 
         // AI Settings
-        val enableAi = filterPrefs.getBoolean("enable_gemini", true)
-        binding.cbEnableAi.isChecked = enableAi
-        binding.tilAiApiKey.visibility = if (enableAi) View.VISIBLE else View.GONE
-        binding.btnToggleAdvancedAi.visibility = if (enableAi) View.VISIBLE else View.GONE
         binding.etAiApiKey.setText(filterPrefs.getString("gemini_api_key", ""))
 
         val customModel = filterPrefs.getString("ai_custom_model", "") ?: ""
@@ -322,25 +296,14 @@ class SettingsActivity : AppCompatActivity() {
             binding.btnToggleAdvancedAi.text = "Technical Settings (Custom Model & Endpoint)"
         }
 
-        // Vibe-Swap & Surgical Ducking Settings
-        binding.cbEnableVibeSwap.isChecked = filterPrefs.getBoolean("enable_vibe_swap", true)
-        binding.cbEnableSurgicalDucking.isChecked = filterPrefs.getBoolean("enable_surgical_ducking", true)
-
         // Ethos Profile
         val savedProfile = filterPrefs.getInt("filter_profile", 0)
         binding.spProfileSettings.setSelection(savedProfile)
 
-        // Analysis Engine Mode
-        val savedMode = filterPrefs.getInt("analysis_mode", AnalysisMode.AI_SEMANTIC.ordinal)
-        binding.spAnalysisMode.setSelection(savedMode)
-
         // Strictness
         val savedStrictness = filterPrefs.getInt("filter_strictness", 10)
         binding.sbStrictnessSettings.progress = savedStrictness
-        binding.tvStrictnessLabelSettings.text = "Strictness Level: $savedStrictness / 10"
-
-        // Explicit Checkbox
-        binding.cbExplicitSettings.isChecked = filterPrefs.getBoolean("filter_explicit", false)
+        binding.tvStrictnessLabelSettings.text = "Strictness Level: $savedStrictness / 10" 
     }
 
     private fun savePreferences() {
@@ -350,16 +313,16 @@ class SettingsActivity : AppCompatActivity() {
         val customClientId = binding.etSpotifyClientId.text?.toString()?.trim()
         authManager.customClientId = if (customClientId.isNullOrEmpty()) null else customClientId
 
-        // Save Filter & AI Preferences
+        // Save Filter & AI Preferences (Intelligently unified defaults)
         filterPrefs.edit()
             .putString("custom_ethos_prompt", binding.etCustomEthosPrompt.text?.toString()?.trim() ?: "")
             .putInt("filter_profile", binding.spProfileSettings.selectedItemPosition)
-            .putInt("analysis_mode", binding.spAnalysisMode.selectedItemPosition)
+            .putInt("analysis_mode", AnalysisMode.AI_SEMANTIC.ordinal)
             .putInt("filter_strictness", binding.sbStrictnessSettings.progress)
-            .putBoolean("filter_explicit", binding.cbExplicitSettings.isChecked)
-            .putBoolean("enable_gemini", binding.cbEnableAi.isChecked)
-            .putBoolean("enable_vibe_swap", binding.cbEnableVibeSwap.isChecked)
-            .putBoolean("enable_surgical_ducking", binding.cbEnableSurgicalDucking.isChecked)
+            .putBoolean("filter_explicit", true)
+            .putBoolean("enable_gemini", true)
+            .putBoolean("enable_vibe_swap", true)
+            .putBoolean("enable_surgical_ducking", true)
             .putString("gemini_api_key", binding.etAiApiKey.text?.toString()?.trim() ?: "")
             .putString("ai_custom_model", binding.etAiCustomModel.text?.toString()?.trim() ?: "")
             .putString("ai_custom_endpoint", binding.etAiCustomEndpoint.text?.toString()?.trim() ?: "")
