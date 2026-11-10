@@ -215,8 +215,9 @@ object PlaylistMirrorService {
             // 1. Fetch tracks from the source playlist
             val trackItems = getPlaylistTracks(sourcePlaylistId, token)
             if (trackItems.isEmpty()) {
-                lastErrorReason = "Spotify returned 0 playable tracks for '$sourcePlaylistName'. The playlist may be empty or restricted."
-                Log.w(TAG, lastErrorReason)
+                val err = "Spotify returned 0 playable tracks for '$sourcePlaylistName'. The playlist may be empty or restricted."
+                lastErrorReason = err
+                Log.w(TAG, err)
                 return@withContext null
             }
 

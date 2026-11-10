@@ -105,7 +105,7 @@ class SpotifySetupActivity : AppCompatActivity() {
     }
 
     private fun showManualPasteDialog() {
-        val input = com.google.android.material.textfield.TextInputEditText(this).apply {
+        val input = androidx.appcompat.widget.AppCompatEditText(this).apply {
             hint = "Paste 32-character Client ID"
             setSingleLine(true)
             val clip = (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)?.primaryClip
