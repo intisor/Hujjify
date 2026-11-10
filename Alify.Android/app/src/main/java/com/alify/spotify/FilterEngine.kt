@@ -114,8 +114,8 @@ class FilterEngine(
         }
 
         val httpClient = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(8, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
         fun executeOpenAiCompatibleRequest(
@@ -248,23 +248,48 @@ class FilterEngine(
                             })
                         })
                     })
+                    // Set safetySettings to BLOCK_NONE so Google's default filters never block lyric analysis
+                    put("safetySettings", JSONArray().apply {
+                        val categories = listOf(
+                            "HARM_CATEGORY_HARASSMENT",
+                            "HARM_CATEGORY_HATE_SPEECH",
+                            "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            "HARM_CATEGORY_DANGEROUS_CONTENT"
+                        )
+                        for (cat in categories) {
+                            put(JSONObject().apply {
+                                put("category", cat)
+                                put("threshold", "BLOCK_NONE")
+                            })
+                        }
+                    })
+                    // If JSON response expected, enforce JSON response mime type and deterministic output
+                    if (prompt.contains("JSON", ignoreCase = true)) {
+                        put("generationConfig", JSONObject().apply {
+                            put("responseMimeType", "application/json")
+                            put("temperature", 0.1)
+                        })
+                    }
                 }
 
                 val request = Request.Builder()
                     .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                    .header("Content-Type", "application/json")
+                    .header("User-Agent", "Ujify-Android/2.0")
                     .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 
                 httpClient.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: return null
                     if (!response.isSuccessful) {
-                        Log.w(TAG, "Gemini $model returned HTTP ${response.code}")
+                        Log.w(TAG, "Gemini $model returned HTTP ${response.code}: ${body.take(200)}")
                         return null
                     }
-                    val body = response.body?.string() ?: return null
                     val root = JSONObject(body)
                     val candidates = root.optJSONArray("candidates") ?: return null
                     if (candidates.length() > 0) {
-                        val text = candidates.getJSONObject(0)
+                        val candidate = candidates.getJSONObject(0)
+                        val text = candidate
                             .optJSONObject("content")
                             ?.optJSONArray("parts")
                             ?.optJSONObject(0)
@@ -272,6 +297,8 @@ class FilterEngine(
                         if (!text.isNullOrBlank()) {
                             return text
                         }
+                        val finishReason = candidate.optString("finishReason")
+                        Log.w(TAG, "Gemini $model candidate 0 finished with reason '$finishReason' but no text")
                     }
                     null
                 }
@@ -357,7 +384,7 @@ class FilterEngine(
             val geminiModels = if (cleanModel.isNotEmpty()) {
                 listOf(cleanModel)
             } else {
-                listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
+                listOf("gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b")
             }
             for (model in geminiModels) {
                 val res = executeGeminiRequest(model, cleanKey, prompt)
@@ -479,8 +506,12 @@ class FilterEngine(
             val userRaw = executeLlmWaterfallRequest(prompt, userKey, customModel, customEndpoint)
             if (userRaw != null) {
                 val parsed = parseLlmResponse(userRaw, trackName, artistName)
-                if (parsed != null) return@withContext parsed
+                if (parsed != null) {
+                    Log.i(TAG, "Evaluated '$trackName' using user's priority custom key")
+                    return@withContext parsed
+                }
             }
+            Log.w(TAG, "User's priority key attempt was inconclusive, engaging fallback waterfall")
         }
 
         val keysWaterfall = buildProviderKeyWaterfall(geminiApiKey)
@@ -488,8 +519,14 @@ class FilterEngine(
         // Identify primary Groq and Gemini candidate keys
         val groqKey = keysWaterfall.firstOrNull { it.startsWith("gsk_") }
             ?: decodeKey(GROQ_FALLBACK_ENC)
-        val geminiKey = keysWaterfall.firstOrNull { !it.startsWith("gsk_") && !it.startsWith("sk-") && !it.startsWith("sk-ant-") }
-            ?: decodeKey(GEMINI_FALLBACK_ENC)
+        // If user's key was already tried above, use the community Gemini fallback key for the race
+        val communityGeminiKey = decodeKey(GEMINI_FALLBACK_ENC)
+        val geminiKey = if (userKey.isNotEmpty() && !geminiApiKey.startsWith("gsk_") && !geminiApiKey.startsWith("sk-")) {
+            communityGeminiKey
+        } else {
+            keysWaterfall.firstOrNull { !it.startsWith("gsk_") && !it.startsWith("sk-") && !it.startsWith("sk-ant-") }
+                ?: communityGeminiKey
+        }
 
         // Speculative Parallel Race: Launch Groq (ultra-fast ~0.8s) and Gemini (~1.2s) concurrently.
         // First valid, non-null FilterResult returned wins and cancels the other.
@@ -516,7 +553,7 @@ class FilterEngine(
                 } catch (_: Exception) { }
             }
 
-            val winner = withTimeoutOrNull(4000) {
+            val winner = withTimeoutOrNull(8000) {
                 channel.receiveCatching().getOrNull()
             }
 
