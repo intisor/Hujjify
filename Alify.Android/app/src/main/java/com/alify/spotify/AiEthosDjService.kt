@@ -53,7 +53,7 @@ object AiEthosDjService {
                 Ethos strictness: $profileName (Must have 100% wholesome, clean, positive, or uplifting lyrics with ZERO explicit language, vulgarity, violence, or obscenity).
                 $tastePrompt
                 Recommend 6 real, widely known, high-energy or vibe-matching tracks on Spotify that match the exact tempo, genre, and emotion requested.
-                DO NOT recommend fictional songs. DO NOT recommend songs with explicit tags.
+                DO NOT recommend fictional songs. Must have clean, wholesome, or uplifting lyrics.
 
                 Return strictly a JSON array of objects with "title", "artist", and "matchReason":
                 [
@@ -179,7 +179,6 @@ object AiEthosDjService {
 
                 for (i in 0 until items.length()) {
                     val item = items.optJSONObject(i) ?: continue
-                    if (item.optBoolean("explicit", false)) continue // Strictly clean
 
                     val title = item.optString("name").trim()
                     val uri = item.optString("uri").trim()

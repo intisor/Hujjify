@@ -319,7 +319,7 @@ class SettingsActivity : AppCompatActivity() {
             .putInt("filter_profile", binding.spProfileSettings.selectedItemPosition)
             .putInt("analysis_mode", AnalysisMode.AI_SEMANTIC.ordinal)
             .putInt("filter_strictness", binding.sbStrictnessSettings.progress)
-            .putBoolean("filter_explicit", true)
+            .putBoolean("filter_explicit", false)
             .putBoolean("enable_gemini", true)
             .putBoolean("enable_vibe_swap", true)
             .putBoolean("enable_surgical_ducking", true)

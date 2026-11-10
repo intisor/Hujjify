@@ -236,7 +236,7 @@
                     android:paddingHorizontal="12dp"
                     android:paddingVertical="8dp"
                     android:lineSpacingExtra="2dp"
-                    android:text="Intelligent Guardian: Automatically blocks explicit metadata, duck-mutes isolated flags, and swaps clean sister tracks seamlessly."
+                    android:text="Intelligent Guardian: Audits lyrics and semantic ethos in real-time, duck-mutes isolated flags, and swaps clean sister tracks seamlessly."
                     android:textColor="@color/spotify_sub_text"
                     android:textSize="12sp" />
 

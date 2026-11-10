@@ -91,7 +91,7 @@ class FilterEngine(
             val profileOrdinal = prefs.getInt("filter_profile", EthosProfile.ISLAMIC.ordinal)
             val profile = EthosProfile.values().getOrElse(profileOrdinal) { EthosProfile.ISLAMIC }
             val strictness = prefs.getInt("filter_strictness", 10)
-            val filterExplicit = prefs.getBoolean("filter_explicit", false)
+            val filterExplicit = false
             val enableGemini = prefs.getBoolean("enable_gemini", true)
             val geminiKey = prefs.getString("gemini_api_key", "") ?: ""
             val customPrompt = prefs.getString("custom_ethos_prompt", "") ?: ""
@@ -378,19 +378,10 @@ class FilterEngine(
     suspend fun evaluate(
         trackName: String,
         artistName: String,
-        isExplicit: Boolean,
+        isExplicit: Boolean = false,
         lyrics: String?
     ): FilterResult = withContext(Dispatchers.Default) {
-        // 1. Explicit tag check (Only if user explicitly opted in to Spotify [E] metadata filter)
-        if (filterExplicit && isExplicit) {
-            return@withContext FilterResult(
-                isFlagged = true,
-                flagReason = "Spotify Explicit Tag [E]",
-                isVerifiedByAi = true
-            )
-        }
-
-        // 2. Pure LLM Semantic Evaluation (zero hardcoded regex interference)
+        // Pure lyrical and semantic ethos evaluation (never relying on Spotify's commercial [E] metadata tag)
         val aiResult = scanWithGemini(trackName, artistName, lyrics)
         if (aiResult != null) {
             return@withContext aiResult
