@@ -117,21 +117,12 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnSaveTop.setOnClickListener {
-            savePreferences()
-        }
-
         binding.btnSaveSettings.setOnClickListener {
             savePreferences()
         }
 
-                binding.btnAutoLinkSettings.setOnClickListener {
+        binding.btnAutoLinkSettings.setOnClickListener {
             spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
-        }
-
-        // Spotify Helper Links
-        binding.btnOpenSpotifyDashboard.setOnClickListener {
-            openUrl("https://developer.spotify.com/dashboard")
         }
 
         binding.btnCopyRedirectUri.setOnClickListener {
@@ -143,14 +134,26 @@ class SettingsActivity : AppCompatActivity() {
 
         // Dynamic AI Provider Key Helper
         binding.btnGetApiKey.setOnClickListener {
-            when (binding.spinnerProvider.selectedItemPosition) {
-                0 -> openUrl("https://aistudio.google.com/") // Gemini
-                1 -> openUrl("https://platform.openai.com/api-keys") // OpenAI
-                2 -> openUrl("https://console.anthropic.com/settings/keys") // Claude
-                3 -> openUrl("https://console.groq.com/keys") // Groq
-                4 -> openUrl("https://openrouter.ai/keys") // OpenRouter
-                else -> openUrl("https://aistudio.google.com/")
-            }
+            val providers = arrayOf(
+                "Google Gemini (Free & Recommended)",
+                "Groq Cloud (Ultra-Fast & Free)",
+                "OpenAI (ChatGPT)",
+                "Anthropic (Claude)",
+                "OpenRouter"
+            )
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Get AI API Key")
+                .setItems(providers) { _, which ->
+                    when (which) {
+                        0 -> openUrl("https://aistudio.google.com/")
+                        1 -> openUrl("https://console.groq.com/keys")
+                        2 -> openUrl("https://platform.openai.com/api-keys")
+                        3 -> openUrl("https://console.anthropic.com/settings/keys")
+                        4 -> openUrl("https://openrouter.ai/keys")
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         // Manual Update Checker
