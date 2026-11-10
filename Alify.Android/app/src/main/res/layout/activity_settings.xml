@@ -63,6 +63,19 @@
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/tvSpotifyGuide"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="💡 Setup Guide &amp; User Allowlist Rules ↗"
+                    android:textColor="@color/accent_blue"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingVertical="4dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
                 <!-- 1-Tap Auto-Link -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAutoLinkSettings"

@@ -125,6 +125,10 @@ class SettingsActivity : AppCompatActivity() {
             spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
         }
 
+        binding.tvSpotifyGuide.setOnClickListener {
+            showSpotifySetupGuideDialog()
+        }
+
         binding.btnCopyRedirectUri.setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("Spotify Redirect URI", "ujify://callback")
@@ -355,6 +359,36 @@ class SettingsActivity : AppCompatActivity() {
                 binding.tvVaultStatus.setTextColor(getColor(R.color.spotify_sub_text))
             }
         }
+    }
+
+    private fun showSpotifySetupGuideDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Spotify Developer Setup Guide")
+            .setMessage(
+                "Follow these 4 simple steps:\n\n" +
+                "1. Open Spotify Developer Dashboard in your browser (tap button below).\n\n" +
+                "2. Click 'Create App':\n" +
+                "   • App Name: Ujify\n" +
+                "   • Redirect URI: ujify://callback\n" +
+                "   • APIs: Check 'Web API'\n\n" +
+                "3. Copy Client ID:\n" +
+                "   • Open App Settings and tap 'Copy Client ID'.\n" +
+                "   • Return here — Ujify will automatically detect & paste it from your clipboard!\n\n" +
+                "4. The Email Allowlist Rule (Crucial):\n" +
+                "   • If your Spotify music account is the SAME account that created the developer app, you are already registered automatically!\n" +
+                "   • If your music playback account uses a DIFFERENT email, or you share this app with a family member: In your Spotify Dashboard, click 'Settings' → 'User Management' and add their Spotify email address."
+            )
+            .setPositiveButton("Open Dashboard") { _, _ ->
+                openUrl("https://developer.spotify.com/dashboard")
+            }
+            .setNeutralButton("Copy Redirect URI") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Spotify Redirect URI", "ujify://callback")
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Copied ujify://callback", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun openUrl(url: String) {
