@@ -329,7 +329,7 @@ class FilterEngine(
                 val models = if (cleanModel.isNotEmpty()) {
                     listOf(cleanModel)
                 } else {
-                    listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-haiku-20240307")
+                    listOf("claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2", "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
                 }
                 for (model in models) {
                     val res = executeAnthropicRequest("https://api.anthropic.com/v1/messages", cleanKey, model, prompt)
@@ -343,7 +343,7 @@ class FilterEngine(
                 val models = if (cleanModel.isNotEmpty()) {
                     listOf(cleanModel)
                 } else {
-                    listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+                    listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b", "openai/gpt-oss-20b")
                 }
                 for (model in models) {
                     val res = executeOpenAiCompatibleRequest("https://api.groq.com/openai/v1/chat/completions", cleanKey, model, prompt)
@@ -371,7 +371,7 @@ class FilterEngine(
                 val models = if (cleanModel.isNotEmpty()) {
                     listOf(cleanModel)
                 } else {
-                    listOf("gpt-4o-mini", "gpt-4o")
+                    listOf("gpt-6-luna", "gpt-6.1-sol", "gpt-4o-mini", "gpt-4o")
                 }
                 for (model in models) {
                     val res = executeOpenAiCompatibleRequest("https://api.openai.com/v1/chat/completions", cleanKey, model, prompt)
@@ -384,7 +384,7 @@ class FilterEngine(
             val geminiModels = if (cleanModel.isNotEmpty()) {
                 listOf(cleanModel)
             } else {
-                listOf("gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b")
+                listOf("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-4-argon", "gemini-2.0-flash")
             }
             for (model in geminiModels) {
                 val res = executeGeminiRequest(model, cleanKey, prompt)

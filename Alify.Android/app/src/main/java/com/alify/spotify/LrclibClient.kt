@@ -495,7 +495,7 @@ class LrclibClient {
                 }
             }
         } else {
-            val models = listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b")
+            val models = listOf("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.0-flash")
             for (model in models) {
                 try {
                     val jsonPayload = JSONObject().apply {
@@ -508,10 +508,26 @@ class LrclibClient {
                                 })
                             })
                         })
+                        put("safetySettings", JSONArray().apply {
+                            val categories = listOf(
+                                "HARM_CATEGORY_HARASSMENT",
+                                "HARM_CATEGORY_HATE_SPEECH",
+                                "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                                "HARM_CATEGORY_DANGEROUS_CONTENT"
+                            )
+                            for (cat in categories) {
+                                put(JSONObject().apply {
+                                    put("category", cat)
+                                    put("threshold", "BLOCK_NONE")
+                                })
+                            }
+                        })
                     }
 
                     val request = Request.Builder()
                         .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                        .header("Content-Type", "application/json")
+                        .header("User-Agent", "Ujify-Android/2.0")
                         .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
                         .build()
 
