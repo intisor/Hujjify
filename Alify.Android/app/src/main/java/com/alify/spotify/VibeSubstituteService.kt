@@ -28,8 +28,11 @@ object VibeSubstituteService {
         .readTimeout(8, TimeUnit.SECONDS)
         .build()
 
+    // Rolling memory of recently chosen sister tracks to prevent repeating the same songs
+    private val recentSisterTrackKeys = java.util.Collections.synchronizedList(mutableListOf<String>())
+
     /**
-     * Dynamically asks the AI (Gemini/Groq waterfall) to recommend 3 clean sister tracks that match
+     * Dynamically asks the AI (Gemini/Groq waterfall) to recommend diverse clean sister tracks that match
      * the exact genre, acoustic energy, rhythm, and vibe of the flagged track.
      * ZERO hardcoded songs or artists — entirely generated on the fly.
      */
@@ -47,16 +50,22 @@ object VibeSubstituteService {
             val tasteContext = SanctuaryMemoryBank.buildTasteContext()
             val tastePrompt = if (tasteContext.isNotBlank()) "\nListener's personal verified taste context: $tasteContext\nPrefer clean sister tracks that align with this aesthetic if suitable.\n" else ""
 
+            val recentAvoidPrompt = if (recentSisterTrackKeys.isNotEmpty()) {
+                val avoidList = recentSisterTrackKeys.takeLast(15).joinToString(", ") { "\"$it\"" }
+                "\nCRITICAL DIVERSITY RULE: DO NOT repeat any of these recently played clean tracks: $avoidList. Suggest completely fresh songs from different artists.\n"
+            } else ""
+
             val prompt = """
                 You are an expert music curator and musicologist.
                 The following song was flagged by an ethical music sentinel for violating the $profileName listening ethos:
                 Track: "$flaggedTrack" by "$flaggedArtist"
                 Violation Reason: "$flagReason"
                 $tastePrompt
-                Recommend 3 high-quality, real, verified alternative songs available on Spotify that:
+                $recentAvoidPrompt
+                Recommend 4 diverse, high-quality, real, verified alternative songs available on Spotify that:
                 1. Match the EXACT SAME musical genre, acoustic energy, tempo/BPM, beat pattern, and vocal vibe.
                 2. Have 100% CLEAN, positive, inspiring, or wholesome lyrics with ZERO explicit language, violence, or vulgarity.
-                3. Are NOT by the same artist if that artist exclusively makes explicit music.
+                3. Are from DIFFERENT artists to provide rich musical variety.
                 4. NEVER suggest "$flaggedTrack".
 
                 Return ONLY a valid JSON array of objects with "title", "artist", and "matchReason", like this:
@@ -84,10 +93,20 @@ object VibeSubstituteService {
             val suggestions = parseSuggestions(rawResponse)
             Log.d(TAG, "AI generated ${suggestions.size} clean substitute suggestions for '$flaggedTrack'")
 
+            // Shuffle candidates so we don't always pick the first one, and filter out recent tracks
+            val freshCandidates = suggestions.filterNot { 
+                recentSisterTrackKeys.contains("${it.title}::${it.artist}".lowercase()) 
+            }.shuffled().ifEmpty { suggestions.shuffled() }
+
             // Search Spotify for each candidate until a verified Spotify URI is found
-            for (candidate in suggestions) {
+            for (candidate in freshCandidates) {
                 val uri = searchSpotifyTrack(candidate.title, candidate.artist, spotifyToken)
                 if (uri != null) {
+                    val key = "${candidate.title}::${candidate.artist}".lowercase()
+                    recentSisterTrackKeys.add(key)
+                    if (recentSisterTrackKeys.size > 30) {
+                        recentSisterTrackKeys.removeAt(0)
+                    }
                     Log.i(TAG, "Found Spotify match for sister track: '${candidate.title}' by '${candidate.artist}' -> $uri")
                     SanctuaryMemoryBank.recordCleanTrack(context, candidate.title, candidate.artist, uri, "vibe_swap")
                     return@withContext candidate.copy(spotifyUri = uri)
@@ -170,6 +189,33 @@ object VibeSubstituteService {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to enqueue track $trackUri: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Immediately starts playing the clean sister track, replacing the flagged track instantly.
+     * PUT /v1/me/player/play with {"uris": ["spotify:track:..."]}
+     */
+    suspend fun playTrackImmediately(trackUri: String, token: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://api.spotify.com/v1/me/player/play"
+            val jsonBody = JSONObject().apply {
+                put("uris", org.json.JSONArray().put(trackUri))
+            }.toString().toRequestBody("application/json".toMediaType())
+
+            val req = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer $token")
+                .put(jsonBody)
+                .build()
+
+            httpClient.newCall(req).execute().use { resp ->
+                Log.i(TAG, "playTrackImmediately for $trackUri returned code: ${resp.code}")
+                resp.isSuccessful || resp.code == 204
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "playTrackImmediately failed: ${e.message}")
             false
         }
     }

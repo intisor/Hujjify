@@ -328,41 +328,51 @@ object PlaylistMirrorService {
 
     private suspend fun getPlaylistTracks(playlistId: String, token: String): List<Tuple4<String, String, String, Boolean>> = withContext(Dispatchers.IO) {
         val list = mutableListOf<Tuple4<String, String, String, Boolean>>()
-        try {
-            // Clean standard endpoint with no fragile, unencoded fields parameter
-            val url = "https://api.spotify.com/v1/playlists/$playlistId/tracks?limit=100"
-            val req = Request.Builder()
-                .url(url)
-                .header("Authorization", "Bearer $token")
-                .get()
-                .build()
+        val candidateUrls = listOf(
+            "https://api.spotify.com/v1/playlists/$playlistId/items?limit=100",
+            "https://api.spotify.com/v1/playlists/$playlistId/tracks?limit=100"
+        )
 
-            httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) {
-                    Log.w(TAG, "getPlaylistTracks failed with status code ${resp.code}: ${resp.message}")
-                    return@withContext emptyList()
-                }
-                val body = resp.body?.string() ?: ""
-                val json = JSONObject(body)
-                val items = json.optJSONArray("items") ?: return@withContext emptyList()
-                for (i in 0 until items.length()) {
-                    val itemObj = items.optJSONObject(i) ?: continue
-                    val track = itemObj.optJSONObject("track") ?: itemObj
-                    val name = track.optString("name")
-                    val uri = track.optString("uri")
-                    val explicit = track.optBoolean("explicit", false)
-                    val artistsArr = track.optJSONArray("artists")
-                    val artist = if (artistsArr != null && artistsArr.length() > 0) {
-                        artistsArr.getJSONObject(0).optString("name")
-                    } else "Unknown Artist"
+        for (url in candidateUrls) {
+            try {
+                val req = Request.Builder()
+                    .url(url)
+                    .header("Authorization", "Bearer $token")
+                    .get()
+                    .build()
 
-                    if (name.isNotBlank() && uri.isNotBlank()) {
-                        list.add(Tuple4(name, artist, uri, explicit))
+                httpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) {
+                        Log.w(TAG, "getPlaylistTracks on $url returned ${resp.code}: ${resp.message}")
+                        return@use // Try next candidate URL
+                    }
+                    val body = resp.body?.string() ?: ""
+                    val json = JSONObject(body)
+                    val items = json.optJSONArray("items") ?: return@use
+                    for (i in 0 until items.length()) {
+                        val itemObj = items.optJSONObject(i) ?: continue
+                        val track = itemObj.optJSONObject("track") ?: itemObj.optJSONObject("item") ?: itemObj
+                        val name = track.optString("name")
+                        val uri = track.optString("uri")
+                        val explicit = track.optBoolean("explicit", false)
+                        val artistsArr = track.optJSONArray("artists")
+                        val artist = if (artistsArr != null && artistsArr.length() > 0) {
+                            artistsArr.getJSONObject(0).optString("name")
+                        } else "Unknown Artist"
+
+                        if (name.isNotBlank() && uri.isNotBlank()) {
+                            list.add(Tuple4(name, artist, uri, explicit))
+                        }
                     }
                 }
+
+                if (list.isNotEmpty()) {
+                    Log.i(TAG, "Loaded ${list.size} tracks successfully from $url")
+                    return@withContext list
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load playlist tracks from $url: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load playlist tracks: ${e.message}")
         }
         list
     }
@@ -433,21 +443,37 @@ object PlaylistMirrorService {
 
     private suspend fun addTracksToPlaylist(playlistId: String, uris: List<String>, token: String) = withContext(Dispatchers.IO) {
         // Spotify API allows at most 100 tracks per POST
+        val targetUrls = listOf(
+            "https://api.spotify.com/v1/playlists/$playlistId/items",
+            "https://api.spotify.com/v1/playlists/$playlistId/tracks"
+        )
+
         for (batch in uris.chunked(100)) {
-            try {
-                val body = JSONObject().apply {
-                    put("uris", JSONArray(batch))
-                }.toString().toRequestBody("application/json".toMediaType())
+            val body = JSONObject().apply {
+                put("uris", JSONArray(batch))
+            }.toString().toRequestBody("application/json".toMediaType())
 
-                val req = Request.Builder()
-                    .url("https://api.spotify.com/v1/playlists/$playlistId/tracks")
-                    .header("Authorization", "Bearer $token")
-                    .post(body)
-                    .build()
+            var added = false
+            for (url in targetUrls) {
+                try {
+                    val req = Request.Builder()
+                        .url(url)
+                        .header("Authorization", "Bearer $token")
+                        .post(body)
+                        .build()
 
-                httpClient.newCall(req).execute().close()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to add batch of tracks: ${e.message}")
+                    httpClient.newCall(req).execute().use { resp ->
+                        if (resp.isSuccessful || resp.code == 201) {
+                            added = true
+                            Log.d(TAG, "Added batch of ${batch.size} tracks via $url")
+                        } else {
+                            Log.w(TAG, "Adding tracks via $url failed (${resp.code})")
+                        }
+                    }
+                    if (added) break
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to add batch of tracks via $url: ${e.message}")
+                }
             }
         }
     }

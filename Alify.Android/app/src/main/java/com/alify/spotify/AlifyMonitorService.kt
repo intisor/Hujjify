@@ -622,6 +622,16 @@ class AlifyMonitorService : Service() {
                         )
 
                         if (sisterTrack?.spotifyUri != null) {
+                            // 1. Attempt immediate playback of the sister track (switches song instantly, eliminating stale queue)
+                            val startedNow = VibeSubstituteService.playTrackImmediately(sisterTrack.spotifyUri, token)
+                            if (startedNow) {
+                                updateNotification("Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
+                                Log.i(TAG, "Dynamic vibe swap started immediately: '${sisterTrack.title}' by '${sisterTrack.artist}'")
+                                glideVolumeRestore()
+                                return@launch
+                            }
+
+                            // 2. Fallback for non-Premium / restricted accounts: enqueue into player queue and skip
                             val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
                             if (enqueued) {
                                 updateNotification("Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
