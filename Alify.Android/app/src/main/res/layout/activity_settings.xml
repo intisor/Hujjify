@@ -63,14 +63,6 @@
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Use your personal Developer Client ID for unlimited, unthrottled monitoring."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
                 <!-- 1-Tap Auto-Link -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAutoLinkSettings"
@@ -124,34 +116,29 @@
                         app:tint="@color/spotify_light_text" />
                 </LinearLayout>
 
-                <!-- Input Client ID (Decluttered) -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilSpotifyClientId"
-                    android:layout_width="match_parent"
+                <!-- Input Client ID -->
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Spotify Client ID"
-                    app:helperText="32-character hex ID (e.g. 1a2b3c...)"
-                    app:helperTextTextColor="@color/spotify_sub_text"
-                    app:helperTextEnabled="true"
-                    app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="6dp"
-                    app:boxCornerRadiusBottomStart="6dp"
-                    app:boxCornerRadiusTopEnd="6dp"
-                    app:boxCornerRadiusTopStart="6dp"
-                    app:boxStrokeColor="@color/spotify_green"
-                    app:endIconMode="clear_text"
-                    app:hintTextColor="@color/spotify_sub_text">
+                    android:layout_marginTop="10dp"
+                    android:text="Spotify Client ID"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etSpotifyClientId"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textNoSuggestions"
-                        android:paddingVertical="8dp"
-                        android:textColor="@color/spotify_light_text"
-                        android:textSize="13sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                <EditText
+                    android:id="@+id/etSpotifyClientId"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/stat_box_background"
+                    android:hint="32-character hex Client ID"
+                    android:textColorHint="@color/spotify_sub_text"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="13sp"
+                    android:paddingHorizontal="12dp"
+                    android:inputType="textNoSuggestions"
+                    android:singleLine="true" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -231,46 +218,31 @@
                         android:progress="10" />
                 </LinearLayout>
 
+                <!-- Custom Ethos Directive Input -->
                 <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/stat_box_background"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="Intelligent Guardian: Audits lyrics and semantic ethos in real-time, duck-mutes isolated flags, and swaps clean sister tracks seamlessly."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
-                <!-- Custom Ethos Directive Input (Decluttered) -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilCustomEthosPrompt"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:hint="Custom Ethos Directive"
-                    app:helperText="e.g. Allow romance, block drill &amp; club themes..."
-                    app:helperTextTextColor="@color/spotify_sub_text"
-                    app:helperTextEnabled="true"
-                    app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="6dp"
-                    app:boxCornerRadiusBottomStart="6dp"
-                    app:boxCornerRadiusTopEnd="6dp"
-                    app:boxCornerRadiusTopStart="6dp"
-                    app:boxStrokeColor="@color/spotify_green"
-                    app:hintTextColor="@color/spotify_sub_text">
+                    android:text="Custom Ethos Directive"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etCustomEthosPrompt"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textCapSentences"
-                        android:maxLines="2"
-                        android:paddingVertical="8dp"
-                        android:textColor="@color/spotify_light_text"
-                        android:textSize="12sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                <EditText
+                    android:id="@+id/etCustomEthosPrompt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/stat_box_background"
+                    android:hint="e.g. Allow romance, block drill &amp; club themes..."
+                    android:textColorHint="@color/spotify_sub_text"
+                    android:textColor="@color/spotify_light_text"
+                    android:textSize="13sp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:maxLines="3" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -298,47 +270,33 @@
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="AI semantic analysis is active out of the box with community keys and offline fallback. (Optional) Enter your personal key below for unlimited custom access."
-                    android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
-
                 <!-- API Key Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilAiApiKey"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:hint="AI Key (OpenAI, Claude, Groq, Gemini, OpenRouter, etc.)"
-                    app:boxBackgroundColor="@color/spotify_black"
-                    app:boxCornerRadiusBottomEnd="6dp"
-                    app:boxCornerRadiusBottomStart="6dp"
-                    app:boxCornerRadiusTopEnd="6dp"
-                    app:boxCornerRadiusTopStart="6dp"
+                    android:layout_marginTop="8dp"
+                    android:hint="AI API Key (Optional BYOK)"
                     app:boxStrokeColor="@color/spotify_green"
                     app:endIconMode="password_toggle"
-                    app:hintTextColor="@color/spotify_sub_text">
+                    app:endIconTint="@color/spotify_sub_text"
+                    app:hintTextColor="@color/spotify_green">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etAiApiKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textPassword"
-                        android:paddingVertical="8dp"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-
 
                 <!-- Key Helper Link -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
@@ -346,7 +304,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Need an API key for this provider?"
+                        android:text="Community keys active. Or get personal key:"
                         android:textColor="@color/spotify_sub_text"
                         android:textSize="12sp" />
 
@@ -354,10 +312,10 @@
                         android:id="@+id/btnGetApiKey"
                         style="@style/Widget.MaterialComponents.Button.TextButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="38dp"
+                        android:layout_height="36dp"
                         android:text="Get API Key ↗"
                         android:textColor="@color/spotify_green"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -366,13 +324,13 @@
                     android:id="@+id/btnToggleAdvancedAi"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="match_parent"
-                    android:layout_height="38dp"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="2dp"
                     android:gravity="start|center_vertical"
                     android:paddingHorizontal="0dp"
                     android:text="Technical Settings (Custom Model &amp; Endpoint)"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <!-- Collapsible Advanced Technical Section -->
                 <LinearLayout
@@ -385,47 +343,38 @@
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilAiCustomModel"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Custom Model ID (e.g. gpt-4o-mini, claude-3-5-sonnet, deepseek-chat)"
-                        app:boxBackgroundColor="@color/spotify_black"
-                        app:boxCornerRadiusBottomEnd="6dp"
-                        app:boxCornerRadiusBottomStart="6dp"
-                        app:boxCornerRadiusTopEnd="6dp"
-                        app:boxCornerRadiusTopStart="6dp"
+                        android:layout_marginTop="4dp"
+                        android:hint="Custom Model ID (Optional)"
                         app:boxStrokeColor="@color/spotify_green"
-                        app:hintTextColor="@color/spotify_sub_text">
+                        app:hintTextColor="@color/spotify_green">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etAiCustomModel"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textNoSuggestions"
-                            android:paddingVertical="8dp"
                             android:textColor="@color/spotify_light_text"
                             android:textSize="12sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilAiCustomEndpoint"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:hint="Custom Endpoint / Base URL (Optional - OpenAI compatible)"
-                        app:boxBackgroundColor="@color/spotify_black"
-                        app:boxCornerRadiusBottomEnd="6dp"
-                        app:boxCornerRadiusBottomStart="6dp"
-                        app:boxCornerRadiusTopEnd="6dp"
-                        app:boxCornerRadiusTopStart="6dp"
+                        android:layout_marginTop="6dp"
+                        android:hint="Custom Base URL (Optional)"
                         app:boxStrokeColor="@color/spotify_green"
-                        app:hintTextColor="@color/spotify_sub_text">
+                        app:hintTextColor="@color/spotify_green">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etAiCustomEndpoint"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textUri"
-                            android:paddingVertical="8dp"
                             android:textColor="@color/spotify_light_text"
                             android:textSize="12sp" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -433,10 +382,10 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="Supports any OpenAI-compatible API (DeepSeek, Ollama, Together), Claude, Groq, and Gemini. Leave blank for auto-configuration."
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
 
             </LinearLayout>
