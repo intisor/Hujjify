@@ -132,7 +132,7 @@
                             android:layout_weight="1"
                             android:text="Preserved: 0"
                             android:textColor="@color/spotify_green"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
 
                         <TextView
                             android:id="@+id/tvVibeReplaced"
@@ -141,18 +141,18 @@
                             android:layout_weight="1"
                             android:text="Swapped: 0"
                             android:textColor="@color/accent_blue"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnOpenInSpotify"
                         android:layout_width="match_parent"
-                        android:layout_height="38dp"
+                        android:layout_height="44dp"
                         android:layout_marginTop="10dp"
                         android:backgroundTint="@color/spotify_green"
                         android:text="Open Sanctuary Playlist in Spotify"
                         android:textColor="@color/spotify_black"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textStyle="bold"
                         android:visibility="gone"
                         app:cornerRadius="8dp" />

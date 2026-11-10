@@ -39,13 +39,13 @@
                     android:layout_height="wrap_content"
                     android:text="Conscious Music &amp; Spotify Lyric Sentinel"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp" />
+                    android:textSize="13sp" />
             </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnSanctuaryHeader"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Sanctuary Playlists"
                 android:padding="8dp"
@@ -54,8 +54,8 @@
 
             <ImageButton
                 android:id="@+id/btnSettings"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Settings &amp; Credentials"
                 android:padding="8dp"
@@ -87,7 +87,7 @@
                     android:layout_height="wrap_content"
                     android:text="Developer Client ID Required"
                     android:textColor="@color/accent_blue"
-                    android:textSize="13sp"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -97,7 +97,7 @@
                     android:lineSpacingExtra="1dp"
                     android:text="Spotify limits unverified developer apps. Add your personal Spotify Developer Client ID for unlimited access."
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -108,13 +108,13 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAutoLinkSpotify"
                         android:layout_width="0dp"
-                        android:layout_height="36dp"
+                        android:layout_height="44dp"
                         android:layout_weight="1"
                         android:layout_marginEnd="6dp"
                         android:backgroundTint="@color/spotify_green"
                         android:text="1-Tap Auto-Link"
                         android:textColor="@color/spotify_black"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textStyle="bold"
                         app:cornerRadius="8dp" />
 
@@ -122,9 +122,9 @@
                         android:id="@+id/btnSetupClientId"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
+                        android:layout_height="44dp"
                         android:text="Manual Keys"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textColor="@color/spotify_light_text"
                         app:cornerRadius="8dp"
                         app:strokeColor="@color/spotify_sub_text" />
@@ -153,7 +153,7 @@
                     android:layout_height="wrap_content"
                     android:text="● Ready to Connect"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -172,7 +172,7 @@
                     android:layout_height="wrap_content"
                     android:text="Connect Spotify to start monitoring"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="12sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/tvSafetyBadge"
@@ -180,11 +180,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:background="@drawable/badge_clean"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="3dp"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
                     android:text="Status: Clean"
                     android:textColor="@color/spotify_light_text"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
 
@@ -193,11 +193,11 @@
                     android:id="@+id/btnViewLyrics"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="42dp"
                     android:layout_marginTop="8dp"
                     android:text="View Lyrics &amp; Annotations"
                     android:textColor="@color/spotify_light_text"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:visibility="gone"
                     app:cornerRadius="6dp"
                     app:strokeColor="@color/spotify_green" />
@@ -222,16 +222,16 @@
                         android:layout_weight="1"
                         android:text="Active Ethos: Islamic (10/10)"
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="11sp" />
+                        android:textSize="13sp" />
 
                     <TextView
                         android:id="@+id/tvChangeSettings"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:padding="2dp"
+                        android:padding="4dp"
                         android:text="Change"
                         android:textColor="@color/spotify_green"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -288,7 +288,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="0 Day Streak"
                                 android:textColor="#f59e0b"
-                                android:textSize="14sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold" />
 
                             <TextView
@@ -297,21 +297,21 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
                                 android:background="@drawable/stat_box_background"
-                                android:paddingHorizontal="5dp"
-                                android:paddingVertical="1dp"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="2dp"
                                 android:text="Tap to view"
                                 android:textColor="@color/spotify_sub_text"
-                                android:textSize="10sp" />
+                                android:textSize="12sp" />
                         </LinearLayout>
 
                         <TextView
                             android:id="@+id/tvStreakProgressSubtitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:text="Track your daily conscious audio habit"
                             android:textColor="@color/spotify_sub_text"
-                            android:textSize="11sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <TextView
@@ -320,7 +320,7 @@
                         android:layout_height="wrap_content"
                         android:text="Freezes: 2/2"
                         android:textColor="@color/accent_blue"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -368,7 +368,7 @@
                         android:layout_weight="1"
                         android:text="AI Ethos Companion"
                         android:textColor="@color/spotify_green"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -377,7 +377,7 @@
                         android:layout_height="wrap_content"
                         android:text="Vibe or filter rule"
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="10sp" />
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- Vibe Chips -->
@@ -397,11 +397,11 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:background="@drawable/stat_box_background"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
                             android:text="Workout Hype"
                             android:textColor="@color/spotify_light_text"
-                            android:textSize="10sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             android:clickable="true"
                             android:focusable="true" />
@@ -412,11 +412,11 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
                             android:background="@drawable/stat_box_background"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
                             android:text="Deep Focus"
                             android:textColor="@color/spotify_light_text"
-                            android:textSize="10sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             android:clickable="true"
                             android:focusable="true" />
@@ -427,11 +427,11 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
                             android:background="@drawable/stat_box_background"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
                             android:text="Peaceful Drive"
                             android:textColor="@color/spotify_light_text"
-                            android:textSize="10sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             android:clickable="true"
                             android:focusable="true" />
@@ -442,11 +442,11 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
                             android:background="@drawable/stat_box_background"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
                             android:text="Soul &amp; Gratitude"
                             android:textColor="@color/spotify_light_text"
-                            android:textSize="10sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             android:clickable="true"
                             android:focusable="true" />
@@ -464,13 +464,13 @@
                     <EditText
                         android:id="@+id/etDjPrompt"
                         android:layout_width="0dp"
-                        android:layout_height="34dp"
+                        android:layout_height="44dp"
                         android:layout_weight="1"
                         android:background="@drawable/stat_box_background"
                         android:hint="Vibe ('Afrobeat') or rule ('Allow romance')..."
                         android:textColorHint="@color/spotify_sub_text"
                         android:textColor="@color/spotify_light_text"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:paddingHorizontal="10dp"
                         android:imeOptions="actionDone"
                         android:singleLine="true" />
@@ -478,12 +478,12 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSpinDj"
                         android:layout_width="wrap_content"
-                        android:layout_height="34dp"
+                        android:layout_height="44dp"
                         android:layout_marginStart="6dp"
                         android:backgroundTint="@color/spotify_green"
                         android:text="Spin"
                         android:textColor="@color/spotify_black"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textStyle="bold"
                         app:cornerRadius="6dp" />
                 </LinearLayout>
@@ -521,7 +521,7 @@
                         android:layout_weight="1"
                         android:text="Protection Analytics"
                         android:textColor="@color/spotify_light_text"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -531,7 +531,7 @@
                         android:padding="4dp"
                         android:text="Reset Stats"
                         android:textColor="@color/spotify_sub_text"
-                        android:textSize="10sp" />
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- 4 Metrics Grid: Audited, Skipped, Flagged, No Lyrics -->
@@ -560,7 +560,7 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/spotify_green"
-                            android:textSize="15sp"
+                            android:textSize="18sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -568,7 +568,7 @@
                             android:layout_height="wrap_content"
                             android:text="Audited"
                             android:textColor="@color/spotify_sub_text"
-                            android:textSize="9sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <!-- Clean -->
@@ -589,7 +589,7 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/spotify_green"
-                            android:textSize="15sp"
+                            android:textSize="18sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -597,7 +597,7 @@
                             android:layout_height="wrap_content"
                             android:text="Clean"
                             android:textColor="@color/spotify_sub_text"
-                            android:textSize="9sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <!-- Flagged & Skipped -->
@@ -618,7 +618,7 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/flag_red"
-                            android:textSize="15sp"
+                            android:textSize="18sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -626,7 +626,7 @@
                             android:layout_height="wrap_content"
                             android:text="Skipped"
                             android:textColor="@color/spotify_sub_text"
-                            android:textSize="9sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <!-- No Lyrics -->
@@ -647,7 +647,7 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/accent_blue"
-                            android:textSize="15sp"
+                            android:textSize="18sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -655,7 +655,7 @@
                             android:layout_height="wrap_content"
                             android:text="No Lyrics"
                             android:textColor="@color/spotify_sub_text"
-                            android:textSize="9sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -672,7 +672,7 @@
                     android:layout_height="wrap_content"
                     android:text="Recent Song Audits"
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="4dp" />
 
@@ -689,51 +689,37 @@
                     android:layout_height="wrap_content"
                     android:text="No songs audited yet. Play music on Spotify to see activity."
                     android:textColor="@color/spotify_sub_text"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:fontStyle="italic"
                     android:paddingVertical="4dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Main Buttons -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogin"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginBottom="6dp"
-            android:backgroundTint="@color/spotify_green"
-            android:text="Connect with Spotify"
-            android:textColor="@color/spotify_black"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            app:cornerRadius="22dp" />
-
+        <!-- Main Action Buttons -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnToggleProtection"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:backgroundTint="@color/accent_blue"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="@color/spotify_green"
             android:text="Start Protection"
-            android:textColor="@color/spotify_light_text"
-            android:textSize="14sp"
+            android:textColor="@color/spotify_black"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:visibility="gone"
-            app:cornerRadius="22dp" />
+            app:cornerRadius="24dp" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSanctifyPlaylists"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:id="@+id/btnLogin"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="6dp"
-            android:text="Sanctify Playlists (Clone &amp; Clean)"
-            android:textColor="@color/spotify_green"
-            android:textSize="13sp"
+            android:layout_height="48dp"
+            android:backgroundTint="@color/spotify_green"
+            android:text="Connect with Spotify"
+            android:textColor="@color/spotify_black"
+            android:textSize="15sp"
             android:textStyle="bold"
-            android:visibility="gone"
-            app:cornerRadius="22dp"
-            app:strokeColor="@color/spotify_green" />
+            app:cornerRadius="24dp" />
 
     </LinearLayout>
 </ScrollView>

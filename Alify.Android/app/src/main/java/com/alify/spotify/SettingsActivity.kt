@@ -141,17 +141,16 @@ class SettingsActivity : AppCompatActivity() {
             Toast.makeText(this, "Redirect URI copied: ujify://callback", Toast.LENGTH_SHORT).show()
         }
 
-        // AI Provider Helper Links
-        binding.btnGetGeminiKey.setOnClickListener {
-            openUrl("https://aistudio.google.com/")
-        }
-
-        binding.btnGetGroqKey.setOnClickListener {
-            openUrl("https://console.groq.com/keys")
-        }
-
-        binding.btnGetOpenRouterKey.setOnClickListener {
-            openUrl("https://openrouter.ai/keys")
+        // Dynamic AI Provider Key Helper
+        binding.btnGetApiKey.setOnClickListener {
+            when (binding.spinnerProvider.selectedItemPosition) {
+                0 -> openUrl("https://aistudio.google.com/") // Gemini
+                1 -> openUrl("https://platform.openai.com/api-keys") // OpenAI
+                2 -> openUrl("https://console.anthropic.com/settings/keys") // Claude
+                3 -> openUrl("https://console.groq.com/keys") // Groq
+                4 -> openUrl("https://openrouter.ai/keys") // OpenRouter
+                else -> openUrl("https://aistudio.google.com/")
+            }
         }
 
         // Manual Update Checker
@@ -181,21 +180,7 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        binding.btnExportVault.setOnClickListener {
-            try {
-                exportVaultLauncher.launch("alify_vault_backup.json")
-            } catch (e: Exception) {
-                Toast.makeText(this, "Cannot launch export: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        binding.btnImportVault.setOnClickListener {
-            try {
-                importVaultLauncher.launch("*/*")
-            } catch (e: Exception) {
-                Toast.makeText(this, "Cannot launch file picker: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+// Standard vault export/import managed via persistent vault storage
 
         // Ethos Spinner
         val profiles = listOf(

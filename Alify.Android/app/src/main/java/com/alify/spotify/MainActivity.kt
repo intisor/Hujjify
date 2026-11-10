@@ -157,7 +157,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnSanctuaryHeader.setOnClickListener { openSanctuaryPlaylists() }
-        binding.btnSanctifyPlaylists.setOnClickListener { openSanctuaryPlaylists() }
 
         binding.btnAutoLinkSpotify.setOnClickListener {
             spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
@@ -317,11 +316,13 @@ class MainActivity : AppCompatActivity() {
             if (AlifyMonitorService.isRunning) {
                 AlifyMonitorService.stop(this)
                 binding.btnToggleProtection.text = "Start Protection"
-                binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_blue))
+                binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_green))
+                binding.btnToggleProtection.setTextColor(ContextCompat.getColor(this, R.color.spotify_black))
             } else {
                 AlifyMonitorService.start(this)
                 binding.btnToggleProtection.text = "Pause Protection"
                 binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.flag_red))
+                binding.btnToggleProtection.setTextColor(ContextCompat.getColor(this, R.color.spotify_light_text))
             }
         }
 
@@ -366,23 +367,27 @@ class MainActivity : AppCompatActivity() {
         if (connected) {
             binding.tvConnectionStatus.text = "● Connected to Spotify"
             binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_green))
-            binding.btnLogin.text = "Disconnect Spotify"
             binding.btnToggleProtection.visibility = View.VISIBLE
-            binding.btnSanctifyPlaylists.visibility = View.VISIBLE
+            binding.btnLogin.text = "Disconnect Spotify"
+            binding.btnLogin.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_dark_card))
+            binding.btnLogin.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
 
             if (AlifyMonitorService.isRunning) {
                 binding.btnToggleProtection.text = "Pause Protection"
                 binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.flag_red))
+                binding.btnToggleProtection.setTextColor(ContextCompat.getColor(this, R.color.spotify_light_text))
             } else {
                 binding.btnToggleProtection.text = "Start Protection"
-                binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_blue))
+                binding.btnToggleProtection.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_green))
+                binding.btnToggleProtection.setTextColor(ContextCompat.getColor(this, R.color.spotify_black))
             }
         } else {
             binding.tvConnectionStatus.text = if (hasClientId) "● Ready to Connect" else "● Setup Required"
             binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
-            binding.btnLogin.text = "Connect with Spotify"
             binding.btnToggleProtection.visibility = View.GONE
-            binding.btnSanctifyPlaylists.visibility = View.GONE
+            binding.btnLogin.text = "Connect with Spotify"
+            binding.btnLogin.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_green))
+            binding.btnLogin.setTextColor(ContextCompat.getColor(this, R.color.spotify_black))
             binding.tvCurrentTrack.text = "No track playing"
             binding.tvCurrentArtist.text = if (hasClientId) "Connect Spotify to start monitoring" else "Configure Spotify Developer Client ID first"
             binding.tvSafetyBadge.visibility = View.GONE
