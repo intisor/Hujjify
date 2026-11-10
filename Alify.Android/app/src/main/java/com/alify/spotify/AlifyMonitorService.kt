@@ -140,14 +140,39 @@ class AlifyMonitorService : Service() {
     private suspend fun monitorLoop() {
         while (scope.isActive) {
             try {
-                val token = authManager.getValidAccessToken()
-                if (token != null) {
-                    checkCurrentPlayback(token)
+                // Priority 1: Check active device media player via native MediaSession (Spotify, YouTube Music, etc.)
+                if (UjifyMediaNotificationListener.isPlaying &&
+                    UjifyMediaNotificationListener.currentTrackTitle.isNotBlank()
+                ) {
+                    val trackTitle = UjifyMediaNotificationListener.currentTrackTitle
+                    val artistName = UjifyMediaNotificationListener.currentArtistName
+                    val progressMs = UjifyMediaNotificationListener.currentProgressMs
+                    currentPlaybackProgressMs = progressMs
+                    progressTimestamp = System.currentTimeMillis()
+
+                    val token = authManager.getValidAccessToken()
+                    processTrackPlayback(
+                        trackId = null,
+                        trackName = trackTitle,
+                        artistName = if (artistName.isNotBlank()) artistName else "Unknown Artist",
+                        isExplicit = false,
+                        token = token
+                    )
+                } else {
+                    // Priority 2: Fall back to Spotify Web API polling if user has connected Spotify account
+                    val token = authManager.getValidAccessToken()
+                    if (token != null) {
+                        checkCurrentPlayback(token)
+                    } else if (lastTrackName != "No track playing" && !UjifyMediaNotificationListener.isPlaying) {
+                        // Reset status when media is paused or idle
+                        lastStatusBadge = "Listening for music..."
+                        updateNotification("Universal Guardian Active (${UjifyMediaNotificationListener.activePlayerName})")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in monitorLoop: ${e.message}", e)
             }
-            delay(3000) // Poll every 3 seconds
+            delay(2000) // Fast 2-second check
         }
     }
 
@@ -177,137 +202,151 @@ class AlifyMonitorService : Service() {
                 artists.getJSONObject(0).optString("name")
             } else "Unknown Artist"
 
-            currentTrackId = trackId
-            lastTrackName = trackName
-            lastArtistName = artistName
+            processTrackPlayback(trackId, trackName, artistName, isExplicit, token)
+        }
+    }
 
-            if (trackId == lastTrackId && lastStatusBadge != "Re-auditing...") return
+    private fun processTrackPlayback(
+        trackId: String?,
+        trackName: String,
+        artistName: String,
+        isExplicit: Boolean,
+        token: String?
+    ) {
+        currentTrackId = trackId
+        lastTrackName = trackName
+        lastArtistName = artistName
 
-            // Reload fresh preferences before every track audit
-            filterEngine = FilterEngine.fromPreferences(this)
+        val effectiveTrackId = trackId ?: "$artistName::$trackName".lowercase()
+        if (effectiveTrackId == lastTrackId && lastStatusBadge != "Re-auditing...") return
 
-            val cacheKey = if (!trackId.isNullOrBlank()) trackId else "$artistName::$trackName".lowercase()
-            val userOverride = SilentCorpusHarvester.getUserOverride(this, artistName, trackName)
-            val cached = auditCache[cacheKey]
+        // Reload fresh preferences before every track audit
+        filterEngine = FilterEngine.fromPreferences(this)
 
-            val result: FilterResult
-            val lyrics: String?
+        val cacheKey = effectiveTrackId
+        val userOverride = SilentCorpusHarvester.getUserOverride(this, artistName, trackName)
+        val cached = auditCache[cacheKey]
 
-            if (userOverride != null && lastStatusBadge != "Re-auditing...") {
-                result = userOverride
-                lyrics = cached?.second ?: LrclibClient.getCachedLyrics(artistName, trackName)
-                lastLyrics = lyrics
-                lastTrackId = trackId
-            } else if (cached != null && !cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
-                // Instant zero-latency full cache hit (lyrics present & verified)
-                result = cached.first
-                lyrics = cached.second
-                lastLyrics = lyrics
-                lastTrackId = trackId
-                Log.d(TAG, "Instant full cache hit for track '$trackName': flagged=${result.isFlagged}")
-            } else if (cached != null && cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
-                // Cached from queue lookahead without lyrics yet: use provisional result & start active recovery
-                result = cached.first
-                lyrics = null
-                lastLyrics = null
-                lastTrackId = trackId
-                Log.d(TAG, "Provisional cache hit (no lyrics) for '$trackName'. Launching recovery worker.")
+        val result: FilterResult
+        val lyrics: String?
+
+        if (userOverride != null && lastStatusBadge != "Re-auditing...") {
+            result = userOverride
+            lyrics = cached?.second ?: LrclibClient.getCachedLyrics(artistName, trackName)
+            lastLyrics = lyrics
+            lastTrackId = effectiveTrackId
+        } else if (cached != null && !cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
+            // Instant zero-latency full cache hit (lyrics present & verified)
+            result = cached.first
+            lyrics = cached.second
+            lastLyrics = lyrics
+            lastTrackId = effectiveTrackId
+            Log.d(TAG, "Instant full cache hit for track '$trackName': flagged=${result.isFlagged}")
+        } else if (cached != null && cached.second.isNullOrBlank() && lastStatusBadge != "Re-auditing...") {
+            // Cached from queue lookahead without lyrics yet: use provisional result & start active recovery
+            result = cached.first
+            lyrics = null
+            lastLyrics = null
+            lastTrackId = effectiveTrackId
+            Log.d(TAG, "Provisional cache hit (no lyrics) for '$trackName'. Launching recovery worker.")
+            launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
+        } else {
+            lastStatusBadge = "Auditing with AI..."
+            updateNotification("Auditing: $trackName - $artistName")
+
+            // 1. Fetch Lyrics via parallel waterfall (LRCLIB + Genius parallel race + LLM fallback)
+            val aiKey = filterEngine.geminiApiKey
+            lyrics = lrclibClient.getLyrics(artistName, trackName, aiKey)
+
+            lastLyrics = lyrics
+            lastTrackId = effectiveTrackId
+
+            // 2. Evaluate via Speculative Multi-Provider LLM Waterfall (Groq || Gemini parallel race)
+            result = filterEngine.evaluate(trackName, artistName, isExplicit, lyrics)
+            auditCache[cacheKey] = Pair(result, lyrics)
+
+            // Silently harvest evaluation into persistent SFT ledger
+            SilentCorpusHarvester.recordEvaluation(
+                context = this@AlifyMonitorService,
+                trackName = trackName,
+                artistName = artistName,
+                profile = filterEngine.profile,
+                strictness = filterEngine.strictness,
+                customDirective = filterEngine.customEthosPrompt,
+                lyrics = lyrics,
+                result = result
+            )
+
+            // If lyrics were not found on this first pass, launch active background recovery worker!
+            if (lyrics.isNullOrBlank()) {
                 launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
-            } else {
-                lastStatusBadge = "Auditing with AI..."
-                updateNotification("Auditing: $trackName - $artistName")
+            }
+        }
 
-                // 1. Fetch Lyrics via parallel waterfall (LRCLIB + Genius parallel race + LLM fallback)
-                val aiKey = filterEngine.geminiApiKey
-                lyrics = lrclibClient.getLyrics(artistName, trackName, aiKey)
+        lastFlagReason = result.flagReason
+        lastFlaggedLines = result.flaggedLines
+        lastAnnotations = result.annotations
 
-                lastLyrics = lyrics
-                lastTrackId = trackId
+        // Record into Protection Statistics Dashboard (once per track playback)
+        if (lastRecordedTrackId != effectiveTrackId) {
+            lastRecordedTrackId = effectiveTrackId
+            DashboardStatsManager.recordTrackAudit(
+                context = this@AlifyMonitorService,
+                trackId = effectiveTrackId,
+                title = trackName,
+                artist = artistName,
+                isFlagged = result.isFlagged,
+                isSkipped = result.isFlagged,
+                hasLyrics = !lyrics.isNullOrBlank(),
+                flagReason = result.flagReason,
+                flaggedLines = result.flaggedLines,
+                lyrics = lyrics
+            )
+        }
 
-                // 2. Evaluate via Speculative Multi-Provider LLM Waterfall (Groq || Gemini parallel race)
-                result = filterEngine.evaluate(trackName, artistName, isExplicit, lyrics)
-                auditCache[cacheKey] = Pair(result, lyrics)
+        if (result.isFlagged) {
+            val syncedLrc = lrclibClient.lastRawSyncedLyrics
+            val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
+            val enableSurgicalDucking = filterPrefs.getBoolean("enable_surgical_ducking", true)
 
-                // Silently harvest evaluation into persistent SFT ledger
-                SilentCorpusHarvester.recordEvaluation(
-                    context = this@AlifyMonitorService,
-                    trackName = trackName,
-                    artistName = artistName,
-                    profile = filterEngine.profile,
-                    strictness = filterEngine.strictness,
-                    customDirective = filterEngine.customEthosPrompt,
-                    lyrics = lyrics,
-                    result = result
-                )
-
-                // If lyrics were not found on this first pass, launch active background recovery worker!
-                if (lyrics.isNullOrBlank()) {
-                    launchLyricsRecovery(trackId, trackName, artistName, isExplicit, cacheKey, token)
+            // Surgical Synced Ducking (Radio Edit Mode):
+            // If song only has 1 or 2 flagged lines and synced lyrics exist, duck the specific words instead of skipping!
+            if (enableSurgicalDucking && !syncedLrc.isNullOrBlank() && result.flaggedLines.size in 1..2) {
+                val intervals = SurgicalDuckingManager.calculateDuckIntervals(syncedLrc, result.flaggedLines)
+                if (intervals.isNotEmpty()) {
+                    isLastFlagged = false
+                    lastStatusBadge = "Radio Edit: Ducking ${intervals.size} flagged words"
+                    updateNotification("Radio Edit: Ducking words in $trackName")
+                    SurgicalDuckingManager.scheduleSurgicalDucking(
+                        context = this@AlifyMonitorService,
+                        scope = scope,
+                        intervals = intervals,
+                        getCurrentPositionMs = { getCurrentPositionMs() }
+                    )
+                    return
                 }
             }
 
-            lastFlagReason = result.flagReason
-            lastFlaggedLines = result.flaggedLines
-            lastAnnotations = result.annotations
-
-            // Record into Protection Statistics Dashboard (once per track playback)
-            if (lastRecordedTrackId != trackId) {
-                lastRecordedTrackId = trackId
-                DashboardStatsManager.recordTrackAudit(
-                    context = this@AlifyMonitorService,
-                    trackId = trackId,
-                    title = trackName,
-                    artist = artistName,
-                    isFlagged = result.isFlagged,
-                    isSkipped = result.isFlagged,
-                    hasLyrics = !lyrics.isNullOrBlank(),
-                    flagReason = result.flagReason,
-                    flaggedLines = result.flaggedLines,
-                    lyrics = lyrics
-                )
+            SurgicalDuckingManager.stop()
+            isLastFlagged = true
+            lastStatusBadge = "Flagged: ${result.flagReason}"
+            updateNotification("Skipping: $trackName (${result.flagReason})")
+            handleFlaggedTrack(trackName, artistName, result.flagReason ?: "Flagged", token)
+        } else {
+            isLastFlagged = false
+            lastStatusBadge = when {
+                !lyrics.isNullOrBlank() && result.isVerifiedByAi -> "Clean (AI Verified)"
+                lyrics.isNullOrBlank() -> "No lyrics indexed (Searching in background...)"
+                else -> "${result.flagReason ?: "Unverified"}"
             }
+            val playerTag = if (UjifyMediaNotificationListener.activePlayerName != "Standby") " [${UjifyMediaNotificationListener.activePlayerName}]" else ""
+            updateNotification("Playing$playerTag: $trackName - $artistName")
+            SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, effectiveTrackId, "listen")
+            com.streakkit.StreakKit.ping(this@AlifyMonitorService, "ujify_playback", value = 1)
+        }
 
-            if (result.isFlagged) {
-                val syncedLrc = lrclibClient.lastRawSyncedLyrics
-                val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
-                val enableSurgicalDucking = filterPrefs.getBoolean("enable_surgical_ducking", true)
-
-                // Surgical Synced Ducking (Radio Edit Mode):
-                // If song only has 1 or 2 flagged lines and synced lyrics exist, duck the specific words instead of skipping!
-                if (enableSurgicalDucking && !syncedLrc.isNullOrBlank() && result.flaggedLines.size in 1..2) {
-                    val intervals = SurgicalDuckingManager.calculateDuckIntervals(syncedLrc, result.flaggedLines)
-                    if (intervals.isNotEmpty()) {
-                        isLastFlagged = false
-                        lastStatusBadge = "Radio Edit: Ducking ${intervals.size} flagged words"
-                        updateNotification("Radio Edit: Ducking words in $trackName")
-                        SurgicalDuckingManager.scheduleSurgicalDucking(
-                            context = this@AlifyMonitorService,
-                            scope = scope,
-                            intervals = intervals,
-                            getCurrentPositionMs = { getCurrentPositionMs() }
-                        )
-                        return
-                    }
-                }
-
-                SurgicalDuckingManager.stop()
-                isLastFlagged = true
-                lastStatusBadge = "Flagged: ${result.flagReason}"
-                updateNotification("Skipping: $trackName (${result.flagReason})")
-                handleFlaggedTrack(trackName, artistName, result.flagReason ?: "Flagged", token)
-            } else {
-                isLastFlagged = false
-                lastStatusBadge = when {
-                    !lyrics.isNullOrBlank() && result.isVerifiedByAi -> "Clean (AI Verified)"
-                    lyrics.isNullOrBlank() -> "No lyrics indexed (Searching in background...)"
-                    else -> "${result.flagReason ?: "Unverified"}"
-                }
-                updateNotification("Playing: $trackName - $artistName")
-                SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
-                com.streakkit.StreakKit.ping(this@AlifyMonitorService, "ujify_playback", value = 1)
-            }
-
-            // Lookahead Queue Pre-Auditing: Quietly pre-audit the upcoming tracks in the background
+        // Lookahead Queue Pre-Auditing (only available if cloud token is present)
+        if (!token.isNullOrBlank()) {
             scope.launch {
                 preAuditUpcomingQueue(token)
             }
@@ -323,21 +362,22 @@ class AlifyMonitorService : Service() {
      * 3. If flagged: immediately engages 350ms Soft Glide Skip!
      */
     private fun launchLyricsRecovery(
-        trackId: String,
+        trackId: String?,
         trackName: String,
         artistName: String,
         isExplicit: Boolean,
         cacheKey: String,
-        token: String
+        token: String?
     ) {
         lyricsRecoveryJob?.cancel()
+        val effectiveTrackId = trackId ?: cacheKey
         lyricsRecoveryJob = scope.launch {
             try {
                 Log.i(TAG, "Starting background lyrics recovery worker for '$trackName' by '$artistName'")
 
                 // Attempt 1: short 3s backoff to allow network jitter or external rate limits to clear
                 delay(3000)
-                if (!isActive || lastTrackId != trackId) return@launch
+                if (!isActive || lastTrackId != effectiveTrackId) return@launch
 
                 LrclibClient.invalidateCache(artistName, trackName)
                 val aiKey = filterEngine.geminiApiKey
@@ -346,7 +386,7 @@ class AlifyMonitorService : Service() {
                 // Attempt 2: wait 5s and retry with alternate search variants
                 if (recovered.isNullOrBlank()) {
                     delay(5000)
-                    if (!isActive || lastTrackId != trackId) return@launch
+                    if (!isActive || lastTrackId != effectiveTrackId) return@launch
                     recovered = lrclibClient.getLyrics(artistName, trackName, aiKey)
                 }
 
@@ -362,7 +402,7 @@ class AlifyMonitorService : Service() {
                     // Update persistent Dashboard Statistics (replaces NO_LYRICS with verified status in-place)
                     DashboardStatsManager.updateTrackAudit(
                         context = this@AlifyMonitorService,
-                        trackId = trackId,
+                        trackId = effectiveTrackId,
                         title = trackName,
                         artist = artistName,
                         isFlagged = newResult.isFlagged,
@@ -384,8 +424,8 @@ class AlifyMonitorService : Service() {
                         result = newResult
                     )
 
-                    // If this song is still the currently playing track on Spotify:
-                    if (lastTrackId == trackId) {
+                    // If this song is still the currently playing track:
+                    if (lastTrackId == effectiveTrackId) {
                         lastLyrics = recovered
                         lastFlagReason = newResult.flagReason
                         lastFlaggedLines = newResult.flaggedLines
@@ -399,16 +439,18 @@ class AlifyMonitorService : Service() {
                         } else {
                             isLastFlagged = false
                             lastStatusBadge = "Clean (AI Verified)"
-                            updateNotification("Playing: $trackName - $artistName")
-                            SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, trackId, "listen")
+                            val playerTag = if (UjifyMediaNotificationListener.activePlayerName != "Standby") " [${UjifyMediaNotificationListener.activePlayerName}]" else ""
+                            updateNotification("Playing$playerTag: $trackName - $artistName")
+                            SanctuaryMemoryBank.recordCleanTrack(this@AlifyMonitorService, trackName, artistName, effectiveTrackId, "listen")
                             com.streakkit.StreakKit.ping(this@AlifyMonitorService, "ujify_playback", value = 1)
                         }
                     }
                 } else {
                     Log.d(TAG, "Background recovery concluded: no lyrics indexed for '$trackName'")
-                    if (lastTrackId == trackId && lastStatusBadge.contains("Searching in background")) {
+                    if (lastTrackId == effectiveTrackId && lastStatusBadge.contains("Searching in background")) {
                         lastStatusBadge = "No lyrics indexed (Clean)"
-                        updateNotification("Playing: $trackName - $artistName")
+                        val playerTag = if (UjifyMediaNotificationListener.activePlayerName != "Standby") " [${UjifyMediaNotificationListener.activePlayerName}]" else ""
+                        updateNotification("Playing$playerTag: $trackName - $artistName")
                     }
                 }
             } catch (e: Exception) {
@@ -552,12 +594,12 @@ class AlifyMonitorService : Service() {
         trackName: String,
         artistName: String,
         flagReason: String,
-        token: String
+        token: String?
     ) {
         val filterPrefs = getSharedPreferences("alify_filter_prefs", Context.MODE_PRIVATE)
         val enableVibeSwap = filterPrefs.getBoolean("enable_vibe_swap", true)
 
-        if (enableVibeSwap) {
+        if (enableVibeSwap && !token.isNullOrBlank()) {
             val profileName = when (filterEngine.profile) {
                 EthosProfile.ISLAMIC -> "Islamic"
                 EthosProfile.CHRISTIAN -> "Christian"
@@ -600,19 +642,27 @@ class AlifyMonitorService : Service() {
         }
     }
 
-    private fun skipTrack(token: String) {
+    private fun skipTrack(token: String?) {
         duckAudioImmediate()
 
         scope.launch {
             try {
-                val request = Request.Builder()
-                    .url("https://api.spotify.com/v1/me/player/next")
-                    .header("Authorization", "Bearer $token")
-                    .post("".toRequestBody(null))
-                    .build()
+                // 1. Dispatch native OS skip via MediaSession (works on Spotify, YouTube Music, Apple Music, etc.)
+                val handledByMediaSession = UjifyMediaNotificationListener.skipToNext()
 
-                httpClient.newCall(request).execute().close()
-                Log.d(TAG, "Spotify skip dispatched successfully. Starting volume glide restore...")
+                // 2. Also dispatch Spotify cloud skip if token is present
+                if (!token.isNullOrBlank()) {
+                    val request = Request.Builder()
+                        .url("https://api.spotify.com/v1/me/player/next")
+                        .header("Authorization", "Bearer $token")
+                        .post("".toRequestBody(null))
+                        .build()
+
+                    httpClient.newCall(request).execute().close()
+                    Log.d(TAG, "Spotify cloud skip dispatched successfully.")
+                } else if (!handledByMediaSession) {
+                    Log.w(TAG, "Skip requested but no active MediaSession controller or cloud token available.")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to skip track: ${e.message}", e)
             } finally {

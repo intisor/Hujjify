@@ -88,6 +88,17 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Universal Media Playback Listener (Spotify, YouTube Music, Apple Music, etc.) -->
+        <service
+            android:name=".UjifyMediaNotificationListener"
+            android:exported="true"
+            android:label="Ujify Universal Guardian"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- StreakKit Home Screen Widget Provider -->
         <receiver
             android:name="com.streakkit.StreakWidgetProvider"
