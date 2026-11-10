@@ -433,11 +433,11 @@ class MainActivity : AppCompatActivity() {
                         if (AlifyMonitorService.isLastFlagged) {
                             val flagCount = AlifyMonitorService.lastFlaggedLines.size
                             val countStr = if (flagCount > 0) " ($flagCount flagged)" else ""
-                            binding.btnViewLyrics.text = "Inspect Flagged Verses$countStr"
+                            binding.btnViewLyrics.text = "Review Flagged Lines$countStr"
                             binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.flag_red)
                             binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.flag_red_light))
                         } else {
-                            binding.btnViewLyrics.text = "View Lyrics & Stance Audit"
+                            binding.btnViewLyrics.text = "View Lyrics & Meaning"
                             binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.spotify_green)
                             binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
                         }

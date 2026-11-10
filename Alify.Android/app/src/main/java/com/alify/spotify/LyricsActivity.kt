@@ -490,19 +490,19 @@ class LyricsActivity : AppCompatActivity() {
         }
 
         binding.pbDeconstructLoading.visibility = View.VISIBLE
-        binding.tvDeconstructContent.text = "Deconstructing song themes, metaphors, and cultural idioms..."
+        binding.tvDeconstructContent.text = "Analyzing what the song and slang mean..."
 
         val prompt = """
-            You are an expert musicologist and cultural analyst.
+            You are a helpful music expert. Explain this song in simple, everyday language.
             Track: "$currentTrackName" by "$currentArtistName"
-            Listener Ethos Profile: $profileName
+            Listener Filter Profile: $profileName
             Lyrics:
             ${currentLyrics?.take(1500) ?: "No lyrics indexed"}
 
-            Provide a clear, objective 2-3 sentence breakdown:
-            1. The true artistic meaning, themes, and cultural slang/metaphors used in this song.
-            2. How it aligns or contrasts with the $profileName conscious listening ethos.
-            Keep it concise, thoughtful, and direct. No preamble or markdown bolding.
+            Provide a clear, simple 2-sentence explanation:
+            1. What is this song really about, and what does the slang/street language mean in plain English?
+            2. Does it contain any negative, explicit, or inappropriate themes according to the $profileName safety filter?
+            Keep it simple, friendly, and easy to understand. No fancy jargon.
         """.trimIndent()
 
         lifecycleScope.launch {
@@ -511,7 +511,7 @@ class LyricsActivity : AppCompatActivity() {
                     val key = filterEngine.geminiApiKey
                     val keys = FilterEngine.buildProviderKeyWaterfall(key)
                     if (keys.isEmpty()) {
-                        "Please configure an AI API Key in Settings to enable deep lyrical deconstruction."
+                        "Please enter an AI Key in Settings to enable automatic song explanations."
                     } else {
                         var resolved: String? = null
                         for (candidateKey in keys) {
@@ -525,7 +525,7 @@ class LyricsActivity : AppCompatActivity() {
                             breakdownCache[cacheKey] = resolved
                             resolved
                         } else {
-                            "Unable to analyze track themes at this moment. Please try again."
+                            "Unable to explain song meaning right now. Please try again."
                         }
                     }
                 } catch (e: Exception) {

@@ -58,7 +58,7 @@
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:backgroundTint="@color/spotify_green"
-            android:text="Sanctify"
+            android:text="Clean Copy"
             android:textColor="@color/spotify_black"
             android:textSize="13sp"
             android:textStyle="bold"

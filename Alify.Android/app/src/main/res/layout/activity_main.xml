@@ -37,7 +37,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Conscious Music &amp; Spotify Lyric Sentinel"
+                    android:text="Clean Music &amp; Real-Time Lyric Filter"
                     android:textColor="@color/spotify_sub_text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -47,7 +47,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Sanctuary Playlists"
+                android:contentDescription="Clean Playlists"
                 android:padding="8dp"
                 android:src="@drawable/ic_sanctuary_playlist"
                 app:tint="@color/spotify_green" />
@@ -188,14 +188,14 @@
                     android:textStyle="bold"
                     android:visibility="gone" />
 
-                <!-- Button to Open Lyrics & Stance Audit -->
+                <!-- Button to Open Lyrics & Meaning -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnViewLyrics"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="42dp"
                     android:layout_marginTop="8dp"
-                    android:text="View Lyrics &amp; Annotations"
+                    android:text="View Lyrics &amp; Meaning"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="13sp"
                     android:visibility="gone"
@@ -220,7 +220,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Active Ethos: Islamic (10/10)"
+                        android:text="Active Filter: Family Safe (10/10)"
                         android:textColor="@color/spotify_sub_text"
                         android:textSize="13sp" />
 
@@ -366,7 +366,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="AI Ethos Companion"
+                        android:text="AI Music DJ &amp; Rules"
                         android:textColor="@color/spotify_green"
                         android:textSize="15sp"
                         android:textStyle="bold" />
@@ -375,7 +375,7 @@
                         android:id="@+id/tvDjStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Vibe or filter rule"
+                        android:text="Pick music or save a filter rule"
                         android:textColor="@color/spotify_sub_text"
                         android:textSize="12sp" />
                 </LinearLayout>

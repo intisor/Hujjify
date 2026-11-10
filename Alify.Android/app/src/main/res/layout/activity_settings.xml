@@ -174,12 +174,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="2. Ethos Guardrails &amp; Interventions"
+                    android:text="2. Safety Filters &amp; Rules"
                     android:textColor="@color/spotify_green"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <!-- Ethos Profile Selector -->
+                <!-- Filter Profile Selector -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -190,7 +190,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Ethos Profile:"
+                        android:text="Filter Profile:"
                         android:textColor="@color/spotify_light_text"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -231,12 +231,12 @@
                         android:progress="10" />
                 </LinearLayout>
 
-                <!-- Custom Ethos Directive Input -->
+                <!-- Custom Filter Rule Input -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Custom Ethos Directive"
+                    android:text="Custom Filter Rule"
                     android:textColor="@color/spotify_light_text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -260,7 +260,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section 3: AI Semantic Engine & API Keys (BYOK) -->
+        <!-- Section 3: AI Engine & API Keys (Optional) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -278,7 +278,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="3. Semantic AI Stance Engine"
+                    android:text="3. AI Provider &amp; Key (Optional)"
                     android:textColor="@color/spotify_green"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -516,7 +516,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Conscious music sentinel &amp; DJ"
+                        android:text="Clean music protector &amp; DJ"
                         android:textColor="@color/spotify_sub_text"
                         android:textSize="12sp" />
                 </LinearLayout>

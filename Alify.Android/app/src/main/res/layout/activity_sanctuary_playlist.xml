@@ -93,7 +93,7 @@
                         android:id="@+id/tvProgressTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Sanctifying Playlist..."
+                        android:text="Creating Clean Playlist..."
                         android:textColor="@color/spotify_green"
                         android:textSize="14sp"
                         android:textStyle="bold" />

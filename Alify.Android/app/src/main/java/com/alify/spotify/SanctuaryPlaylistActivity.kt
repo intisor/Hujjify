@@ -78,7 +78,7 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         if (PlaylistMirrorService.isMirroringActive) {
             val activeName = PlaylistMirrorService.activePlaylistName ?: "Playlist"
             binding.cardMirrorProgress.visibility = View.VISIBLE
-            binding.tvProgressTitle.text = "Sanctifying: $activeName"
+            binding.tvProgressTitle.text = "Creating Clean Copy: $activeName"
             PlaylistMirrorService.currentProgress?.let { updateProgressUi(it) }
         } else if (authManager.isConnected()) {
             loadPlaylists()
@@ -108,7 +108,7 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
             binding.pbLoadingPlaylists.visibility = View.GONE
             binding.tvEmptyPlaylists.visibility = View.VISIBLE
             binding.btnGrantPermissions.visibility = View.GONE
-            binding.tvEmptyPlaylists.text = "Connect your Spotify account in Settings to view and sanctify your playlists."
+            binding.tvEmptyPlaylists.text = "Connect your Spotify account in Settings to view and create clean playlists."
             return
         }
 
@@ -169,12 +169,12 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
         for (playlist in playlists) {
             val itemBinding = ItemSanctuaryPlaylistBinding.inflate(layoutInflater, binding.layoutPlaylistsContainer, false)
             itemBinding.tvPlaylistName.text = playlist.name
-            // Robust track display: if 0 or unknown, show 'Ready to Sanctify'
-            itemBinding.tvPlaylistTrackCount.text = if (playlist.trackCount > 0) "${playlist.trackCount} tracks" else "Ready to Sanctify"
+            // Robust track display: if 0 or unknown, show 'Ready to Clean'
+            itemBinding.tvPlaylistTrackCount.text = if (playlist.trackCount > 0) "${playlist.trackCount} tracks" else "Ready to Clean"
 
-            // If it's already a Sanctuary playlist, style differently
-            if (playlist.name.contains("Sanctuary:")) {
-                itemBinding.btnSanctify.text = "Sanctified"
+            // If it's already a clean playlist, style differently
+            if (playlist.name.contains("Sanctuary:") || playlist.name.contains("Clean:")) {
+                itemBinding.btnSanctify.text = "Cleaned"
                 itemBinding.btnSanctify.isEnabled = false
                 itemBinding.btnSanctify.setBackgroundColor(0xFF2A2A2A.toInt())
                 itemBinding.btnSanctify.setTextColor(0xFF888888.toInt())
@@ -183,7 +183,7 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
                     if (!PlaylistMirrorService.isMirroringActive) {
                         startMirroring(playlist, token)
                     } else {
-                        Toast.makeText(this, "A sanctuary mirror is currently running in the background", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "A clean playlist copy is already being created in the background", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -195,7 +195,7 @@ class SanctuaryPlaylistActivity : AppCompatActivity() {
     private fun startMirroring(playlist: SpotifyPlaylistItem, token: String) {
         binding.cardMirrorProgress.visibility = View.VISIBLE
         binding.btnOpenInSpotify.visibility = View.GONE
-        binding.tvProgressTitle.text = "Sanctifying: ${playlist.name}"
+        binding.tvProgressTitle.text = "Creating Clean Copy: ${playlist.name}"
         binding.tvProgressStatus.text = "Starting background audit..."
         binding.pbMirror.isIndeterminate = true
         binding.tvCleanPreserved.text = "Preserved: 0"
