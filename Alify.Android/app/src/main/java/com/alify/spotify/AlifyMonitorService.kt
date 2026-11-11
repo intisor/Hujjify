@@ -206,7 +206,7 @@ class AlifyMonitorService : Service() {
         }
     }
 
-    private fun processTrackPlayback(
+    private suspend fun processTrackPlayback(
         trackId: String?,
         trackName: String,
         artistName: String,
