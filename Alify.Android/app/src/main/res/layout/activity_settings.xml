@@ -76,19 +76,6 @@
                     android:clickable="true"
                     android:focusable="true" />
 
-                <!-- 1-Tap Auto-Link -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAutoLinkSettings"
-                    android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@color/spotify_green"
-                    android:text="Auto-Link Spotify Developer App"
-                    android:textColor="@color/spotify_black"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="8dp" />
-
                 <!-- Redirect URI Box -->
                 <LinearLayout
                     android:layout_width="match_parent"

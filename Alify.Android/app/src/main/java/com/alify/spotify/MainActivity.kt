@@ -93,9 +93,24 @@ class MainActivity : AppCompatActivity() {
         checkForUpdates()
     }
 
+    private val mediaUiListener: () -> Unit = {
+        runOnUiThread {
+            if (!isDestroyed && !isFinishing) {
+                refreshLiveTrackUI()
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
+        UjifyMediaNotificationListener.addStateListener(mediaUiListener)
         updateAuthState()
+        refreshLiveTrackUI()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        UjifyMediaNotificationListener.removeStateListener(mediaUiListener)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -157,10 +172,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnSanctuaryHeader.setOnClickListener { openSanctuaryPlaylists() }
-
-        binding.btnAutoLinkSpotify.setOnClickListener {
-            spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
-        }
 
         binding.btnSetupClientId.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -311,19 +322,31 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        // Toggle Audio Protection Service Button (Universal MediaSession Guardian)
+        // Toggle Audio Protection Service Button
         binding.btnToggleProtection.setOnClickListener {
             if (AlifyMonitorService.isRunning) {
                 AlifyMonitorService.stop(this)
                 updateAuthState()
                 Toast.makeText(this, "Protection paused", Toast.LENGTH_SHORT).show()
             } else {
-                if (!UjifyMediaNotificationListener.isAccessGranted(this)) {
+                val spotifyOnly = authManager.isSpotifyOnlyMode
+                if (!spotifyOnly && !UjifyMediaNotificationListener.isAccessGranted(this)) {
                     MaterialAlertDialogBuilder(this)
                         .setTitle("Enable Universal Guardian")
                         .setMessage(
                             "To protect your music in real-time across Spotify, YouTube Music, and other music players, Ujify needs Android Notification Access.\n\n" +
                             "Tap 'Enable Access' and switch on 'Ujify Universal Guardian'."
+                        )
+                        .setPositiveButton("Enable Access") { _, _ ->
+                            startActivity(UjifyMediaNotificationListener.createSettingsIntent())
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else if (spotifyOnly && !authManager.isConnected() && !UjifyMediaNotificationListener.isAccessGranted(this)) {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Connect Spotify or Enable Access")
+                        .setMessage(
+                            "Spotify-only mode is active. Either tap 'Connect Spotify' below, or grant Notification Access so Ujify can monitor Spotify directly."
                         )
                         .setPositiveButton("Enable Access") { _, _ ->
                             startActivity(UjifyMediaNotificationListener.createSettingsIntent())
@@ -384,22 +407,36 @@ class MainActivity : AppCompatActivity() {
             binding.btnToggleProtection.setTextColor(ContextCompat.getColor(this, R.color.spotify_black))
         }
 
+        val spotifyOnly = authManager.isSpotifyOnlyMode
         if (connected) {
-            binding.tvConnectionStatus.text = "● Spotify Cloud Connected (BYOK)"
+            binding.tvConnectionStatus.text = "● Spotify Mode Active (Non-Spotify Disabled)"
             binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_green))
-            binding.btnLogin.text = "Disconnect Spotify Cloud"
+            binding.btnLogin.text = "Disconnect Spotify"
             binding.btnLogin.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_dark_card))
             binding.btnLogin.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
+        } else if (spotifyOnly) {
+            binding.tvConnectionStatus.text = if (AlifyMonitorService.isRunning) "● Spotify-Only Mode Active" else "● Spotify-Only Mode (Client ID Set)"
+            binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_green))
+            binding.btnLogin.text = "Connect Spotify Account"
+            binding.btnLogin.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_dark_card))
+            binding.btnLogin.setTextColor(ContextCompat.getColor(this, R.color.spotify_light_text))
+
+            if (!AlifyMonitorService.isRunning) {
+                binding.tvCurrentTrack.text = "Protection Inactive"
+                binding.tvCurrentArtist.text = "Tap 'Start Protection' to begin"
+                binding.tvSafetyBadge.visibility = View.GONE
+                binding.btnViewLyrics.visibility = View.GONE
+            }
         } else {
             if (AlifyMonitorService.isRunning) {
                 val player = UjifyMediaNotificationListener.activePlayerName
-                binding.tvConnectionStatus.text = if (player != "Standby") "● Universal Guardian: $player" else "● Universal Guardian Active"
+                binding.tvConnectionStatus.text = if (player != "Standby") "● Universal Mode: $player" else "● Universal Mode Active"
                 binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_green))
             } else {
-                binding.tvConnectionStatus.text = "● Universal Guardian Ready"
+                binding.tvConnectionStatus.text = "● Universal Mode Ready"
                 binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.spotify_sub_text))
             }
-            binding.btnLogin.text = "Connect Spotify Cloud (Optional)"
+            binding.btnLogin.text = "Connect Spotify (Optional)"
             binding.btnLogin.setBackgroundColor(ContextCompat.getColor(this, R.color.spotify_dark_card))
             binding.btnLogin.setTextColor(ContextCompat.getColor(this, R.color.spotify_light_text))
 
@@ -412,50 +449,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshLiveTrackUI() {
+        if (AlifyMonitorService.isRunning) {
+            val spotifyOnly = authManager.isSpotifyOnlyMode
+            if (!authManager.isConnected()) {
+                if (spotifyOnly) {
+                    binding.tvConnectionStatus.text = "● Spotify-Only Mode Active"
+                } else {
+                    val player = UjifyMediaNotificationListener.activePlayerName
+                    binding.tvConnectionStatus.text = if (player != "Standby") "● Universal Mode: $player" else "● Universal Mode Active"
+                }
+                binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_green))
+            }
+
+            val hasTrack = AlifyMonitorService.lastTrackName.isNotEmpty() && AlifyMonitorService.lastTrackName != "No track playing"
+            if (hasTrack) {
+                binding.tvCurrentTrack.text = AlifyMonitorService.lastTrackName
+                binding.tvCurrentArtist.text = AlifyMonitorService.lastArtistName
+                binding.tvSafetyBadge.visibility = View.VISIBLE
+                binding.tvSafetyBadge.text = AlifyMonitorService.lastStatusBadge
+
+                binding.btnViewLyrics.visibility = View.VISIBLE
+                if (AlifyMonitorService.isLastFlagged) {
+                    val flagCount = AlifyMonitorService.lastFlaggedLines.size
+                    val countStr = if (flagCount > 0) " ($flagCount flagged)" else ""
+                    binding.btnViewLyrics.text = "Review Flagged Lines$countStr"
+                    binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.flag_red)
+                    binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.flag_red_light))
+                } else {
+                    binding.btnViewLyrics.text = "View Lyrics & Meaning"
+                    binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.spotify_green)
+                    binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
+                }
+
+                if (AlifyMonitorService.isLastFlagged) {
+                    binding.tvSafetyBadge.setBackgroundResource(R.drawable.badge_flagged)
+                } else {
+                    binding.tvSafetyBadge.setBackgroundResource(R.drawable.badge_clean)
+                }
+            } else {
+                binding.tvCurrentTrack.text = "Waiting for music..."
+                binding.tvCurrentArtist.text = if (spotifyOnly) "Play a song on Spotify" else "Play a song in Spotify or YouTube Music"
+                binding.tvSafetyBadge.visibility = View.GONE
+                binding.btnViewLyrics.visibility = View.GONE
+            }
+        }
+    }
+
     private fun startUiPolling() {
         lifecycleScope.launch {
             while (true) {
-                if (AlifyMonitorService.isRunning) {
-                    if (!authManager.isConnected()) {
-                        val player = UjifyMediaNotificationListener.activePlayerName
-                        binding.tvConnectionStatus.text = if (player != "Standby") "● Universal Guardian: $player" else "● Universal Guardian Active"
-                        binding.tvConnectionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_green))
-                    }
-
-                    val hasTrack = AlifyMonitorService.lastTrackName.isNotEmpty() && AlifyMonitorService.lastTrackName != "No track playing"
-                    if (hasTrack) {
-                        binding.tvCurrentTrack.text = AlifyMonitorService.lastTrackName
-                        binding.tvCurrentArtist.text = AlifyMonitorService.lastArtistName
-                        binding.tvSafetyBadge.visibility = View.VISIBLE
-                        binding.tvSafetyBadge.text = AlifyMonitorService.lastStatusBadge
-
-                        binding.btnViewLyrics.visibility = View.VISIBLE
-                        if (AlifyMonitorService.isLastFlagged) {
-                            val flagCount = AlifyMonitorService.lastFlaggedLines.size
-                            val countStr = if (flagCount > 0) " ($flagCount flagged)" else ""
-                            binding.btnViewLyrics.text = "Review Flagged Lines$countStr"
-                            binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.flag_red)
-                            binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.flag_red_light))
-                        } else {
-                            binding.btnViewLyrics.text = "View Lyrics & Meaning"
-                            binding.btnViewLyrics.strokeColor = ContextCompat.getColorStateList(this@MainActivity, R.color.spotify_green)
-                            binding.btnViewLyrics.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.spotify_light_text))
-                        }
-
-                        if (AlifyMonitorService.isLastFlagged) {
-                            binding.tvSafetyBadge.setBackgroundResource(R.drawable.badge_flagged)
-                        } else {
-                            binding.tvSafetyBadge.setBackgroundResource(R.drawable.badge_clean)
-                        }
-                    } else {
-                        binding.tvCurrentTrack.text = "Waiting for music..."
-                        binding.tvCurrentArtist.text = "Play a song in Spotify or YouTube Music"
-                        binding.tvSafetyBadge.visibility = View.GONE
-                        binding.btnViewLyrics.visibility = View.GONE
-                    }
-                }
+                refreshLiveTrackUI()
                 updateDashboardUI()
-                delay(2000)
+                delay(750)
             }
         }
     }

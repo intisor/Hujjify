@@ -41,6 +41,11 @@ class UjifyMediaNotificationListener : NotificationListenerService() {
             "com.soundcloud.android" to "SoundCloud"
         )
 
+        val SPOTIFY_PACKAGES = setOf(
+            "com.spotify.music",
+            "com.spotify.lite"
+        )
+
         @Volatile
         var activeController: MediaController? = null
             private set
@@ -195,6 +200,10 @@ class UjifyMediaNotificationListener : NotificationListenerService() {
         val notification = sbn?.notification ?: return
         val pkg = sbn.packageName ?: return
 
+        if (SpotifyAuthManager.isSpotifyOnlyMode(this) && !SPOTIFY_PACKAGES.contains(pkg)) {
+            return
+        }
+
         // Check if the notification carries an active MediaSession Token
         val token = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
@@ -232,16 +241,35 @@ class UjifyMediaNotificationListener : NotificationListenerService() {
     private fun evaluateActiveControllers(controllers: List<MediaController>?) {
         if (controllers.isNullOrEmpty()) return
 
+        val spotifyOnly = SpotifyAuthManager.isSpotifyOnlyMode(this)
+        val filtered = if (spotifyOnly) {
+            controllers.filter { SPOTIFY_PACKAGES.contains(it.packageName) }
+        } else {
+            controllers
+        }
+
+        if (filtered.isEmpty()) {
+            if (spotifyOnly && activePackageName != null && !SPOTIFY_PACKAGES.contains(activePackageName)) {
+                try { activeController?.unregisterCallback(controllerCallback) } catch (_: Exception) {}
+                activeController = null
+                activePackageName = null
+                activePlayerName = "Spotify"
+                isPlaying = false
+                notifyStateChanged()
+            }
+            return
+        }
+
         // Prioritize actively playing sessions from known streaming apps (Spotify, YouTube Music, etc.)
-        val playingController = controllers.firstOrNull { c ->
+        val playingController = filtered.firstOrNull { c ->
             val isPkgSupported = SUPPORTED_PLAYERS.containsKey(c.packageName)
             val isPlayingState = c.playbackState?.state == PlaybackState.STATE_PLAYING
             isPkgSupported && isPlayingState
-        } ?: controllers.firstOrNull { c ->
+        } ?: filtered.firstOrNull { c ->
             c.playbackState?.state == PlaybackState.STATE_PLAYING
-        } ?: controllers.firstOrNull { c ->
+        } ?: filtered.firstOrNull { c ->
             SUPPORTED_PLAYERS.containsKey(c.packageName)
-        } ?: controllers.firstOrNull()
+        } ?: filtered.firstOrNull()
 
         if (playingController != null) {
             setActiveController(playingController, playingController.packageName)
@@ -249,6 +277,9 @@ class UjifyMediaNotificationListener : NotificationListenerService() {
     }
 
     private fun shouldPreferController(newController: MediaController, pkg: String): Boolean {
+        if (SpotifyAuthManager.isSpotifyOnlyMode(this) && !SPOTIFY_PACKAGES.contains(pkg)) {
+            return false
+        }
         val current = activeController ?: return true
         val currentPlaying = current.playbackState?.state == PlaybackState.STATE_PLAYING
         val newPlaying = newController.playbackState?.state == PlaybackState.STATE_PLAYING

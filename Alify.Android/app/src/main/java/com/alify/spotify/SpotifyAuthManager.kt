@@ -19,8 +19,14 @@ class SpotifyAuthManager(private val context: Context) {
     private val prefs = context.getSharedPreferences("alify_spotify_prefs", Context.MODE_PRIVATE)
 
     companion object {
+        private const val SPOTIFY_PREFS = "alify_spotify_prefs"
         const val REDIRECT_URI = "ujify://callback"
         const val SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-read-private"
+
+        fun isSpotifyOnlyMode(context: Context): Boolean {
+            val prefs = context.getSharedPreferences(SPOTIFY_PREFS, Context.MODE_PRIVATE)
+            return !prefs.getString("custom_client_id", null).isNullOrBlank()
+        }
     }
 
     var customClientId: String?
@@ -29,6 +35,9 @@ class SpotifyAuthManager(private val context: Context) {
 
     val hasClientId: Boolean
         get() = !customClientId.isNullOrBlank()
+
+    val isSpotifyOnlyMode: Boolean
+        get() = hasClientId
 
     val clientId: String?
         get() = customClientId?.takeIf { it.isNotBlank() }

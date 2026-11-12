@@ -121,10 +121,6 @@ class SettingsActivity : AppCompatActivity() {
             savePreferences()
         }
 
-        binding.btnAutoLinkSettings.setOnClickListener {
-            spotifySetupLauncher.launch(SpotifySetupActivity.createIntent(this))
-        }
-
         binding.tvSpotifyGuide.setOnClickListener {
             showSpotifySetupGuideDialog()
         }
@@ -319,6 +315,7 @@ class SettingsActivity : AppCompatActivity() {
         // Save Spotify Client ID
         val customClientId = binding.etSpotifyClientId.text?.toString()?.trim()
         authManager.customClientId = if (customClientId.isNullOrEmpty()) null else customClientId
+        val modeMsg = if (authManager.isSpotifyOnlyMode) "Settings saved (Spotify-only mode active)" else "Settings saved (Universal mode active)"
 
         // Save Filter & AI Preferences (Intelligently unified defaults)
         filterPrefs.edit()
@@ -338,7 +335,7 @@ class SettingsActivity : AppCompatActivity() {
         PersistentVaultManager.saveVault(this)
         AlifyMonitorService.invalidateCurrentTrack()
 
-        Toast.makeText(this, "Settings saved successfully", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, modeMsg, Toast.LENGTH_SHORT).show()
         finish()
     }
 

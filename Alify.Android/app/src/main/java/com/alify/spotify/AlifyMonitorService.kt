@@ -29,6 +29,10 @@ class AlifyMonitorService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + serviceJob)
     private var monitorLoopJob: Job? = null
     private var lyricsRecoveryJob: Job? = null
+    private val wakeUpSignal = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+    private val mediaStateListener: () -> Unit = {
+        wakeUpSignal.trySend(Unit)
+    }
     private val httpClient = OkHttpClient()
 
     private lateinit var authManager: SpotifyAuthManager
@@ -91,6 +95,7 @@ class AlifyMonitorService : Service() {
         }
 
         fun start(context: Context) {
+            isRunning = true
             val intent = Intent(context, AlifyMonitorService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -100,6 +105,7 @@ class AlifyMonitorService : Service() {
         }
 
         fun stop(context: Context) {
+            isRunning = false
             val intent = Intent(context, AlifyMonitorService::class.java)
             context.stopService(intent)
         }
@@ -113,6 +119,7 @@ class AlifyMonitorService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Active - Ujify AI Protection On"))
         isRunning = true
+        UjifyMediaNotificationListener.addStateListener(mediaStateListener)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -133,6 +140,8 @@ class AlifyMonitorService : Service() {
             monitorLoopJob = scope.launch {
                 monitorLoop()
             }
+        } else {
+            wakeUpSignal.trySend(Unit)
         }
         return START_STICKY
     }
@@ -140,10 +149,14 @@ class AlifyMonitorService : Service() {
     private suspend fun monitorLoop() {
         while (scope.isActive) {
             try {
-                // Priority 1: Check active device media player via native MediaSession (Spotify, YouTube Music, etc.)
-                if (UjifyMediaNotificationListener.isPlaying &&
-                    UjifyMediaNotificationListener.currentTrackTitle.isNotBlank()
-                ) {
+                val spotifyOnly = authManager.isSpotifyOnlyMode
+                val activePkg = UjifyMediaNotificationListener.activePackageName
+                val canUseMediaSession = UjifyMediaNotificationListener.isPlaying &&
+                    UjifyMediaNotificationListener.currentTrackTitle.isNotBlank() &&
+                    (!spotifyOnly || activePkg == null || UjifyMediaNotificationListener.SPOTIFY_PACKAGES.contains(activePkg))
+
+                // Priority 1: Check active device media player via native MediaSession
+                if (canUseMediaSession) {
                     val trackTitle = UjifyMediaNotificationListener.currentTrackTitle
                     val artistName = UjifyMediaNotificationListener.currentArtistName
                     val progressMs = UjifyMediaNotificationListener.currentProgressMs
@@ -163,16 +176,19 @@ class AlifyMonitorService : Service() {
                     val token = authManager.getValidAccessToken()
                     if (token != null) {
                         checkCurrentPlayback(token)
-                    } else if (lastTrackName != "No track playing" && !UjifyMediaNotificationListener.isPlaying) {
+                    } else if (lastTrackName != "No track playing" && !canUseMediaSession) {
                         // Reset status when media is paused or idle
                         lastStatusBadge = "Listening for music..."
-                        updateNotification("Universal Guardian Active (${UjifyMediaNotificationListener.activePlayerName})")
+                        val modeLabel = if (spotifyOnly) "Spotify Mode Active" else "Universal Guardian Active (${UjifyMediaNotificationListener.activePlayerName})"
+                        updateNotification(modeLabel)
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in monitorLoop: ${e.message}", e)
             }
-            delay(2000) // Fast 2-second check
+            kotlinx.coroutines.withTimeoutOrNull(800L) {
+                wakeUpSignal.receive()
+            }
         }
     }
 
@@ -776,6 +792,7 @@ class AlifyMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        UjifyMediaNotificationListener.removeStateListener(mediaStateListener)
         lyricsRecoveryJob?.cancel()
         serviceJob.cancel()
         // Safety: If service is destroyed while volume was ducked, restore user's volume

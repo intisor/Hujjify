@@ -87,8 +87,8 @@ class LrclibClient {
     }
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
@@ -149,7 +149,7 @@ class LrclibClient {
                 } catch (_: Exception) { }
             }
 
-            val winner = withTimeoutOrNull(5500) {
+            val winner = withTimeoutOrNull(2500) {
                 channel.receiveCatching().getOrNull()
             }
 

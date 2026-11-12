@@ -114,8 +114,8 @@ class FilterEngine(
         }
 
         val httpClient = OkHttpClient.Builder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
             .build()
 
         fun executeOpenAiCompatibleRequest(
@@ -553,7 +553,7 @@ class FilterEngine(
                 } catch (_: Exception) { }
             }
 
-            val winner = withTimeoutOrNull(8000) {
+            val winner = withTimeoutOrNull(4500) {
                 channel.receiveCatching().getOrNull()
             }
 
