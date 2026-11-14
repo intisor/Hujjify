@@ -5,39 +5,36 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer Protective Shield (Hujja Crest) -->
+    <!-- Ujify Outer Guardian Shield: Mind Protection & Audio Sanctity -->
     <path
-        android:fillColor="#0F261A"
+        android:fillColor="#0D2418"
         android:strokeColor="#1DB954"
-        android:strokeWidth="3.6"
+        android:strokeWidth="3.2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M 54,20 C 69,20 81,24 81,37 C 81,61 68,77 54,86 C 40,77 27,61 27,37 C 27,24 39,20 54,20 Z" />
+        android:pathData="M 54,18 C 72,18 84,23 84,38 C 84,63 70,80 54,90 C 38,80 24,63 24,38 C 24,23 36,18 54,18 Z" />
 
-    <!-- Music Tone & Equalizer Chart (Bold, Simple, Highly Legible) -->
-    <!-- Bar 1: Left Harmonic (6dp wide, rounded pill caps) -->
+    <!-- Pure Soundwaves radiating outward (Psychology of Pure Mind) -->
+    <path
+        android:strokeColor="#1DB954"
+        android:strokeAlpha="0.4"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 40,28 C 48,25 60,25 68,28" />
+
+    <!-- The Iconic 'U' Archetype (Tuning Fork / Harmonic Basin / Clean Stream) -->
+    <!-- Left Stem with smooth pill cap -->
     <path
         android:fillColor="#1DB954"
-        android:pathData="M 36.5,49 L 36.5,49 A 3,3 0 0 1 39.5,52 L 39.5,60 A 3,3 0 0 1 36.5,63 L 36.5,63 A 3,3 0 0 1 33.5,60 L 33.5,52 A 3,3 0 0 1 36.5,49 Z" />
+        android:pathData="M 40,36 L 46,36 C 47.1,36 48,36.9 48,38 L 48,56 C 48,60.4 50.7,64 54,64 C 57.3,64 60,60.4 60,56 L 60,38 C 60,36.9 60.9,36 62,36 L 68,36 C 69.1,36 70,36.9 70,38 L 70,56 C 70,66 62.8,74 54,74 C 45.2,74 38,66 38,56 L 38,38 C 38,36.9 38.9,36 40,36 Z" />
 
-    <!-- Bar 2: Mid-Left Rhythm (6dp wide, rounded pill caps) -->
-    <path
-        android:fillColor="#00E676"
-        android:pathData="M 45,40 L 45,40 A 3,3 0 0 1 48,43 L 48,67 A 3,3 0 0 1 45,70 L 45,70 A 3,3 0 0 1 42,67 L 42,43 A 3,3 0 0 1 45,40 Z" />
-
-    <!-- Bar 3: Center Peak Tone (7dp wide, pure crisp white, maximum focal contrast) -->
+    <!-- Inner Core: White Radiant Dot / Frequency Node (Pure Ethos / Conscious Clarity) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 54,32 L 54,32 A 3.5,3.5 0 0 1 57.5,35.5 L 57.5,72.5 A 3.5,3.5 0 0 1 54,76 L 54,76 A 3.5,3.5 0 0 1 50.5,72.5 L 50.5,35.5 A 3.5,3.5 0 0 1 54,32 Z" />
+        android:pathData="M 54,42 A 4.5,4.5 0 1 1 53.99,42 Z" />
 
-    <!-- Bar 4: Mid-Right Melody (6dp wide, rounded pill caps) -->
     <path
         android:fillColor="#00E676"
-        android:pathData="M 63,40 L 63,40 A 3,3 0 0 1 66,43 L 66,67 A 3,3 0 0 1 63,70 L 63,70 A 3,3 0 0 1 60,67 L 60,43 A 3,3 0 0 1 63,40 Z" />
-
-    <!-- Bar 5: Right Acoustic (6dp wide, rounded pill caps) -->
-    <path
-        android:fillColor="#1DB954"
-        android:pathData="M 71.5,49 L 71.5,49 A 3,3 0 0 1 74.5,52 L 74.5,60 A 3,3 0 0 1 71.5,63 L 71.5,63 A 3,3 0 0 1 68.5,60 L 68.5,52 A 3,3 0 0 1 71.5,49 Z" />
+        android:pathData="M 54,51 A 3,3 0 1 1 53.99,51 Z" />
 
 </vector>

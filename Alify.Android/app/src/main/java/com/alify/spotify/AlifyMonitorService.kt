@@ -648,6 +648,7 @@ class AlifyMonitorService : Service() {
             }
 
             scope.launch {
+                var handledImmediately = false
                 try {
                     val alreadyPreEnqueued = currentTrackId != null && preSwappedQueueTrackIds.contains(currentTrackId)
                     if (!alreadyPreEnqueued) {
@@ -662,16 +663,17 @@ class AlifyMonitorService : Service() {
                         )
 
                         if (sisterTrack?.spotifyUri != null) {
-                            // 1. Attempt immediate playback of the sister track (switches song instantly, eliminating stale queue)
+                            // 1. Attempt immediate playback of the sister track (switches song instantly)
                             val startedNow = VibeSubstituteService.playTrackImmediately(sisterTrack.spotifyUri, token)
                             if (startedNow) {
+                                handledImmediately = true
                                 updateNotification("Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
                                 Log.i(TAG, "Dynamic vibe swap started immediately: '${sisterTrack.title}' by '${sisterTrack.artist}'")
                                 glideVolumeRestore()
                                 return@launch
                             }
 
-                            // 2. Fallback for non-Premium / restricted accounts: enqueue into player queue and skip
+                            // 2. Fallback: enqueue into player queue
                             val enqueued = VibeSubstituteService.enqueueTrack(sisterTrack.spotifyUri, token)
                             if (enqueued) {
                                 updateNotification("Swapped to: ${sisterTrack.title} - ${sisterTrack.artist}")
@@ -684,7 +686,9 @@ class AlifyMonitorService : Service() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Vibe substitution failed: ${e.message}")
                 } finally {
-                    skipTrack(token)
+                    if (!handledImmediately) {
+                        skipTrack(token)
+                    }
                 }
             }
         } else {
@@ -697,11 +701,12 @@ class AlifyMonitorService : Service() {
 
         scope.launch {
             try {
-                // 1. Dispatch native OS skip via MediaSession (works on Spotify, YouTube Music, Apple Music, etc.)
+                // Dispatch native OS skip via MediaSession FIRST
                 val handledByMediaSession = UjifyMediaNotificationListener.skipToNext()
 
-                // 2. Also dispatch Spotify cloud skip if token is present
-                if (!token.isNullOrBlank()) {
+                // Only dispatch cloud REST API skip if MediaSession was NOT active/available.
+                // Sending both simultaneously causes Spotify to double-skip and pause!
+                if (!handledByMediaSession && !token.isNullOrBlank()) {
                     val request = Request.Builder()
                         .url("https://api.spotify.com/v1/me/player/next")
                         .header("Authorization", "Bearer $token")
@@ -709,8 +714,10 @@ class AlifyMonitorService : Service() {
                         .build()
 
                     httpClient.newCall(request).execute().close()
-                    Log.d(TAG, "Spotify cloud skip dispatched successfully.")
-                } else if (!handledByMediaSession) {
+                    Log.d(TAG, "Spotify cloud skip dispatched as fallback.")
+                } else if (handledByMediaSession) {
+                    Log.d(TAG, "MediaSession handled skip cleanly without collision.")
+                } else {
                     Log.w(TAG, "Skip requested but no active MediaSession controller or cloud token available.")
                 }
             } catch (e: Exception) {
@@ -803,7 +810,7 @@ class AlifyMonitorService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Ujify Audio Protection")
             .setContentText(statusText)
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_notification_ujify)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
