@@ -60,6 +60,7 @@ class AlifyMonitorService : Service() {
         const val CHANNEL_ID = "alify_playback_protection"
         const val NOTIFICATION_ID = 1001
         const val ACTION_SKIP = "com.alify.spotify.ACTION_SKIP"
+        const val ACTION_REFRESH = "com.alify.spotify.ACTION_REFRESH"
 
         var isRunning = false
             private set
@@ -81,6 +82,17 @@ class AlifyMonitorService : Service() {
             // Forces re-audit when user changes settings or requests re-check
             auditCache.clear()
             lastStatusBadge = "Re-auditing..."
+        }
+
+        fun triggerManualRefresh(context: Context) {
+            val intent = Intent(context, AlifyMonitorService::class.java).apply {
+                action = ACTION_REFRESH
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
 
         fun skipCurrentTrack(context: Context) {
@@ -129,6 +141,18 @@ class AlifyMonitorService : Service() {
                 if (token != null) {
                     skipTrack(token)
                 }
+            }
+            return START_STICKY
+        }
+
+        if (intent?.action == ACTION_REFRESH) {
+            scope.launch {
+                lastTrackId = null // Allow re-processing of track
+                val token = authManager.getValidAccessToken()
+                if (token != null) {
+                    checkCurrentPlayback(token)
+                }
+                wakeUpSignal.trySend(Unit)
             }
             return START_STICKY
         }

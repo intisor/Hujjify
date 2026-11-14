@@ -177,6 +177,28 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        // Manual Refresh in Currently Playing Card
+        binding.btnRefreshPlayback.setOnClickListener {
+            val rotate = android.view.animation.RotateAnimation(
+                0f, 360f,
+                android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
+                android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
+            ).apply {
+                duration = 500
+                repeatCount = 0
+            }
+            binding.btnRefreshPlayback.startAnimation(rotate)
+
+            if (AlifyMonitorService.isRunning) {
+                AlifyMonitorService.triggerManualRefresh(this)
+                refreshLiveTrackUI()
+                Toast.makeText(this, "Refreshing playback status...", Toast.LENGTH_SHORT).show()
+            } else {
+                refreshLiveTrackUI()
+                Toast.makeText(this, "Protection is paused. Tap 'Start Protection' to monitor.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         binding.tvChangeSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
