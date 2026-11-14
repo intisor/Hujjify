@@ -174,31 +174,34 @@ class AlifyMonitorService : Service() {
         while (scope.isActive) {
             try {
                 val spotifyOnly = authManager.isSpotifyOnlyMode
-                val activePkg = UjifyMediaNotificationListener.activePackageName
-                val canUseMediaSession = UjifyMediaNotificationListener.isPlaying &&
-                    UjifyMediaNotificationListener.currentTrackTitle.isNotBlank() &&
-                    (!spotifyOnly || activePkg == null || UjifyMediaNotificationListener.SPOTIFY_PACKAGES.contains(activePkg))
+                val token = authManager.getValidAccessToken()
 
-                // Priority 1: Check active device media player via native MediaSession
-                if (canUseMediaSession) {
-                    val trackTitle = UjifyMediaNotificationListener.currentTrackTitle
-                    val artistName = UjifyMediaNotificationListener.currentArtistName
-                    val progressMs = UjifyMediaNotificationListener.currentProgressMs
-                    currentPlaybackProgressMs = progressMs
-                    progressTimestamp = System.currentTimeMillis()
-
-                    val token = authManager.getValidAccessToken()
-                    processTrackPlayback(
-                        trackId = null,
-                        trackName = trackTitle,
-                        artistName = if (artistName.isNotBlank()) artistName else "Unknown Artist",
-                        isExplicit = false,
-                        token = token
-                    )
+                // When Spotify credentials are provided (Spotify-only mode with valid token/connection),
+                // pause all device-bound MediaSession listeners/actions and rely purely on Spotify REST API.
+                // Device-bound MediaSession is strictly for non-Spotify mode (or before Spotify is connected).
+                if (spotifyOnly && token != null) {
+                    checkCurrentPlayback(token)
                 } else {
-                    // Priority 2: Fall back to Spotify Web API polling if user has connected Spotify account
-                    val token = authManager.getValidAccessToken()
-                    if (token != null) {
+                    val activePkg = UjifyMediaNotificationListener.activePackageName
+                    val canUseMediaSession = UjifyMediaNotificationListener.isPlaying &&
+                        UjifyMediaNotificationListener.currentTrackTitle.isNotBlank() &&
+                        (!spotifyOnly || activePkg == null || UjifyMediaNotificationListener.SPOTIFY_PACKAGES.contains(activePkg))
+
+                    if (canUseMediaSession) {
+                        val trackTitle = UjifyMediaNotificationListener.currentTrackTitle
+                        val artistName = UjifyMediaNotificationListener.currentArtistName
+                        val progressMs = UjifyMediaNotificationListener.currentProgressMs
+                        currentPlaybackProgressMs = progressMs
+                        progressTimestamp = System.currentTimeMillis()
+
+                        processTrackPlayback(
+                            trackId = null,
+                            trackName = trackTitle,
+                            artistName = if (artistName.isNotBlank()) artistName else "Unknown Artist",
+                            isExplicit = false,
+                            token = token
+                        )
+                    } else if (token != null) {
                         checkCurrentPlayback(token)
                     } else if (lastTrackName != "No track playing" && !canUseMediaSession) {
                         // Reset status when media is paused or idle
@@ -701,12 +704,13 @@ class AlifyMonitorService : Service() {
 
         scope.launch {
             try {
-                // Dispatch native OS skip via MediaSession FIRST
-                val handledByMediaSession = UjifyMediaNotificationListener.skipToNext()
+                val spotifyOnly = authManager.isSpotifyOnlyMode
 
-                // Only dispatch cloud REST API skip if MediaSession was NOT active/available.
-                // Sending both simultaneously causes Spotify to double-skip and pause!
-                if (!handledByMediaSession && !token.isNullOrBlank()) {
+                // Segregation:
+                // When in Spotify mode (Spotify credentials entered and token present),
+                // execute skip exclusively via Spotify REST API (POST /v1/me/player/next).
+                // Device-bound MediaSession skip is strictly for non-Spotify mode.
+                if (spotifyOnly && !token.isNullOrBlank()) {
                     val request = Request.Builder()
                         .url("https://api.spotify.com/v1/me/player/next")
                         .header("Authorization", "Bearer $token")
@@ -714,11 +718,24 @@ class AlifyMonitorService : Service() {
                         .build()
 
                     httpClient.newCall(request).execute().close()
-                    Log.d(TAG, "Spotify cloud skip dispatched as fallback.")
-                } else if (handledByMediaSession) {
-                    Log.d(TAG, "MediaSession handled skip cleanly without collision.")
+                    Log.d(TAG, "Spotify REST API skip dispatched successfully.")
                 } else {
-                    Log.w(TAG, "Skip requested but no active MediaSession controller or cloud token available.")
+                    // Non-Spotify Mode: use on-device MediaSession
+                    val handledByMediaSession = UjifyMediaNotificationListener.skipToNext()
+                    if (handledByMediaSession) {
+                        Log.d(TAG, "Device MediaSession handled skip for non-Spotify mode.")
+                    } else if (!token.isNullOrBlank()) {
+                        val request = Request.Builder()
+                            .url("https://api.spotify.com/v1/me/player/next")
+                            .header("Authorization", "Bearer $token")
+                            .post("".toRequestBody(null))
+                            .build()
+
+                        httpClient.newCall(request).execute().close()
+                        Log.d(TAG, "Fallback Spotify cloud skip dispatched.")
+                    } else {
+                        Log.w(TAG, "Skip requested but no active MediaSession controller or cloud token available.")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to skip track: ${e.message}", e)
